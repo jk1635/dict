@@ -67,7 +67,7 @@ const config: Config = {
         footer: {
             style: "dark",
             links: [],
-            copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with JK.`,
+            copyright: `Copyright © ${new Date().getFullYear()}, JK.`,
         },
         prism: {
             theme: prismThemes.github,
