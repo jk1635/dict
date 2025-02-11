@@ -182,16 +182,100 @@ OAuth 로그인 구현은 크게 2가지 방식이 있다.
 -   백엔드가 Access Token과 Refresh Token을 HttpOnly Secure 쿠키에 저장하여 반환
 -   프론트는 Access Token을 직접 다루지 않고, API 요청 시 자동으로 쿠키가 포함되어 인증 유지
 
-구상 3. 백엔드 중심 + PKCE 적용, OAuth 2.0 Best Practice 준수
-
--   프론트에서 백엔드 /auth/login API 호출
--   백엔드가 카카오 OAuth 서버로 리다이렉트 (PKCE code_challenge 포함)
--   카카오 인가 서버에서 인가 코드 발급 후 백엔드로 리다이렉트
--   백엔드가 인가 코드를 이용해 카카오 OAuth 서버에 Access Token 요청 (PKCE code_verifier 포함)
--   백엔드가 Access Token과 Refresh Token을 저장 (DB 또는 Redis)
--   프론트에는 Access Token을 제공하지 않고, 세션 쿠키 또는 자체 발급 JWT 반환
--   프론트는 Access Token을 직접 다루지 않고, API 요청 시 세션 쿠키 또는 자체 발급 JWT를 사용하여 인증 유지
-
-구상 3은 RFC의 Best Current Practice 문서([RFC 9700](https://datatracker.ietf.org/doc/rfc9700))를 참고했다.
+더 나은 대안에 대해 여러 구상을 하던 중 Best Practice가 무엇일지 궁금해졌다.
+분명 Best Practice가 있을 것 같았기 때문이다.
+그렇게 구글링을 하던 중 PKCE(Proof Key for Code Exchange)라는 것을 알게 되었다.
+찾아보니 PKCE는 OAuth 2.1에서는 필수로 권고되는 보안 확장이라고 한다. 그럼 PKCE란 무엇이길래 OAuth 2.1에서 필수로 권고되는 걸까?
 
 ## PKCE란 무엇인가
+
+> PKCE was originally designed to protect the authorization code flow in mobile apps, and was later recommended to be used by single-page apps as well. In later years, it was recognized that its ability to prevent authorization code injection makes it useful for every type of OAuth client, even apps running on a web server that use a client secret. Because of its history in the use of mobile apps and single-page apps, it is sometimes incorrectly thought that PKCE is an alternative to a client secret. However PKCE is not a replacement for a client secret, and PKCE is recommended even if a client is using a client secret, since apps with a client secret are still susceptible to authorization code injection attacks.
+>
+> _- [Okta의 RFC7636 문서 요약](https://www.oauth.com/oauth2-servers/pkce/)_
+
+PKCE("[pixy](https://datatracker.ietf.org/doc/html/rfc7636)"로 발음)는 원래 모바일 앱에서 인가 코드 흐름(Authorization Code Flow)을 보호하기 위해 설계되었고, 이후 싱글 페이지 애플리케이션(SPA)에서도 사용하도록 권장되었다.
+그리고 몇 년 후 인가 코드 주입(Authorization Code Injection) 공격을 방지할 수 있다는 점에서 모든 유형의 OAuth 클라이언트에 유용하다는 사실이 확인된다.
+심지어 Client Secret을 사용하는 웹 서버 기반 애플리케이션에서도 마찬가지이다.
+
+PKCE가 모바일 앱과 SPA에서 먼저 사용되었기 때문에, 종종 Client Secret의 대안으로 오해받기도 한다.
+하지만 PKCE는 Client Secret을 대체하는 개념이 아니다.
+오히려 Client Secret을 사용하는 애플리케이션조차도 인가 코드 주입 공격에 취약할 수 있기 때문에, PKCE는 Client Secret을 사용하더라도 함께 적용하는 것이 권장된다.
+
+예를 들면, 기존의 OAuth 방식엔 아래와 같은 인가 코드 주입 공격 시나리오가 생길 수 있다. ([RFC 9700 - 4.5. Authorization Code Injection](https://datatracker.ietf.org/doc/rfc9700), [Auth Code Injection Attack in Action](https://www.youtube.com/watch?v=1ot45WwQWJE))
+
+![authorization code injection](./authorization_code_injection.png)
+
+<!-- ```mermaid
+sequenceDiagram
+    participant A as 공격자
+    participant U as 피해자
+    participant F as 프론트엔드
+    participant B as 백엔드
+    participant I as 인가 서버 (Authorization Server)
+
+    U->>F: 1. 로그인 요청
+    F->>I: 2. 인가 코드 요청 (정상적인 OAuth 플로우)
+    I->>F: 3. 인가 코드 발급
+    F->>B: 4. 인가 코드 전달 (백엔드로 전송)
+
+    Note over A: 5. 인가 코드 탈취
+    A->>B: 6. 탈취한 인가 코드로 Access Token 요청
+    B->>I: 7. 백엔드가 인가 코드 검증 후 Access Token 요청 (client_secret 포함)
+    I->>B: 8. Access Token 발급 (정상적인 인가 코드라 판단)
+    B->>A: 9. 공격자의 Access Token 획득
+    A->>B: 10. 공격자가 피해자의 계정으로 API 요청 (OAuth 인증 성공)
+``` -->
+
+인가 코드 주입 공격 시나리오
+
+-   공격자가 피해자의 인가 코드(Authorization Code)를 탈취한다.
+-   공격자는 탈취한 인가 코드를 이용해 백엔드로 요청을 보낸다.
+-   백엔드는 정상적인 인가 코드라 판단하고, `client_secret`을 사용해 Access Token을 인가 서버로 요청한다.
+-   결과적으로 공격자는 피해자의 계정으로 로그인 할 수 있게 된다.
+
+즉, 인가 코드만 탈취하면 `client_secret`을 몰라도 정상적인 백엔드 서버를 이용해 Access Token을 받을 수 있는 것이다.
+이때 PKCE를 사용하면 이러한 인가 코드 주입 공격을 방지할 수 있다고 한다. PKCE의 방식은 아래와 같다.
+
+![pkce rfc7636](./pkce_rfc7636.png)
+
+![pkce](./pkce.png)
+
+<!-- ```mermaid
+sequenceDiagram
+    participant Client as 내 애플리케이션 (Client)
+    participant AuthServer as 인가 서버 (Authorization Server)
+
+    Client->>Client: 1. code_verifier 생성
+    Client->>Client: 2. code_verifier를 SHA-256 해싱 → code_challenge 생성
+    Client->>AuthServer: 3. 로그인 요청 (client_id, redirect_uri, code_challenge, code_challenge_method)
+    AuthServer->>AuthServer: 4. client_id, redirect_uri 유효성 검증
+    AuthServer->>Client: 5. 로그인 페이지 표시
+    Client->>AuthServer: 6. 사용자 로그인
+    AuthServer->>Client: 7. redirect_uri로 인가 코드 전달
+    Client->>AuthServer: 8. Access Token 요청 (인가 코드, code_verifier)
+    AuthServer->>AuthServer: 9. code_verifier 해싱 → 로그인 요청시 받은 code_challenge와 일치 여부 확인
+    AuthServer->>Client: 10. Access Token 반환
+``` -->
+
+구상 3. OAuth 2.0 + PKCE 적용
+
+-   로그인 페이지로 접근한다.
+-   랜덤한 문자를 생성하고 `code_verifier`라 한다.
+-   `code_verifier`를 SHA-256 해싱한 뒤 `code_challenge`를 만든다.
+-   로그인 요청을 보낼때, 쿼리 파라미터에 `client_id`, `redirect_uri`, `code_challenge`, `code_challenge_method`를 담아서 인가 서버로 보낸다.
+-   인가 서버는 `client_id`와 `redirect_uri`가 유효한지 확인하고, 유효하면 로그인 창을 띄운다.
+-   사용자가 로그인하면, 인가 서버는 `redirect_uri`로 인가 코드를 담아서 내 애플리케이션으로 리다이렉트한다.
+-   내 애플리케이션에서 받은 인가 코드와 저장해 두었던 `code_verifier`를 인가 서버로 보내 Access Token을 요청한다.
+-   인가 서버는 `code_verifier`를 같은 알고리즘으로 해싱해, 인가 코드 생성 시 받은 `code_challenge`와 일치하는지 확인한다.
+-   검증이 되면, 인가 서버가 Access Token을 반환한다.
+
+한마디로 PKCE는 공격자에게 인가 코드를 탈취당했을 경우를 대비해 클라이언트와 인가 서버가 서로 동일한 문자열을 공유하며, 해당 문자열을 암호화한 값을 주고받으며 위조 및 탈취를 방지하는 것이다. ([FISA Seminar](https://www.slideshare.net/slideshow/fisa-1-oauth2-0-jwt/269561947#34))
+
+참고:
+[OAuth 2.0 아키텍처 이해와 보안 취약점 사례](https://www.igloo.co.kr/security-information/spring-security-part2-oauth-2-0-%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98-%EC%9D%B4%ED%95%B4%EC%99%80-%EB%B3%B4%EC%95%88-%EC%B7%A8%EC%95%BD%EC%A0%90-%EC%82%AC%EB%A1%80),
+[PKCE:OAuth를 더욱더 안전하게 만드는 방법](https://devocean.sk.com/blog/techBoardDetail.do?ID=166255&boardType=techBlog),
+[Leaking authorization codes and access tokens](https://portswigger.net/web-security/oauth#leaking-authorization-codes-and-access-tokens),
+[authorization code flow](https://dropbox.tech/developers/pkce--what-and-why-),
+[Authorization Code Flow with PKCE](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow-with-pkce),
+[PKCE Mechanism](https://cheatsheetseries.owasp.org/cheatsheets/OAuth2_Cheat_Sheet#pkce-proof-key-for-code-exchange-mechanism),
+[Best practice on Securing code_verifier in PKCE](https://stackoverflow.com/questions/67517436/best-practice-on-securing-code-verifier-in-pkce-enhanced-authorization-code-flow)
