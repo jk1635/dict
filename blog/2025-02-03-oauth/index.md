@@ -59,7 +59,7 @@ OAuth는 이러한 문제를 해결하기 위해 등장한 표준화된 인증 �
 | Client (클라이언트)              | 인가를 이용하여 리소스 소유자를 대신해 제한된 리소스 요청을 만드는 애플리케이션. 즉, 사용자의 리소스에 접근하려는 애플리케이션을 의미한다. |
 | Authorization Server (인가 서버) | 리소스 소유자를 성공적으로 인증하고 인가를 얻은 뒤 클라이언트에게 접근 토큰을 발급하는 서버.                                               |
 
-### 인증과 인가의 차이
+## 인증과 인가의 차이
 
 그럼 인증과 인가는 무슨 차이일까.
 
@@ -107,7 +107,7 @@ ResourceServer->>Client: 요청된 데이터 반환
     - 클라이언트는 인가 서버의 Access Token을 저장
     - Access Token을 사용해 리소스 서버에서 데이터를 가져온다.
 
-## 프로젝트에 적용해보기
+## 프로젝트에 적용하기
 
 OAuth 로그인 구현은 크게 2가지 방식이 있다.
 
@@ -193,7 +193,7 @@ OAuth 로그인 구현은 크게 2가지 방식이 있다.
 >
 > _- [Okta의 RFC7636 문서 요약](https://www.oauth.com/oauth2-servers/pkce/)_
 
-PKCE("[pixy](https://datatracker.ietf.org/doc/html/rfc7636)"로 발음)는 원래 모바일 앱에서 인가 코드 흐름(Authorization Code Flow)을 보호하기 위해 설계되었고, 이후 싱글 페이지 애플리케이션(SPA)에서도 사용하도록 권장되었다.
+PKCE(Proof Key for Code Exchange, "[pixy](https://datatracker.ietf.org/doc/html/rfc7636)"로 발음)는 원래 모바일 앱에서 인가 코드 흐름(Authorization Code Flow)을 보호하기 위해 설계되었고, 이후 싱글 페이지 애플리케이션(SPA)에서도 사용하도록 권장되었다.
 그리고 몇 년 후 인가 코드 주입(Authorization Code Injection) 공격을 방지할 수 있다는 점에서 모든 유형의 OAuth 클라이언트에 유용하다는 사실이 확인된다.
 심지어 Client Secret을 사용하는 웹 서버 기반 애플리케이션에서도 마찬가지이다.
 
@@ -202,6 +202,8 @@ PKCE가 모바일 앱과 SPA에서 먼저 사용되었기 때문에, 종종 Clie
 오히려 Client Secret을 사용하는 애플리케이션조차도 인가 코드 주입 공격에 취약할 수 있기 때문에, PKCE는 Client Secret을 사용하더라도 함께 적용하는 것이 권장된다.
 
 예를 들면, 기존의 OAuth 방식엔 아래와 같은 인가 코드 주입 공격 시나리오가 생길 수 있다. ([RFC 9700 - 4.5. Authorization Code Injection](https://datatracker.ietf.org/doc/rfc9700))
+
+### Authorization Code Injection
 
 ![authorization code injection](./authorization_code_injection.png)
 
@@ -235,6 +237,8 @@ sequenceDiagram
 
 즉, 인가 코드만 탈취하면 `client_secret`을 몰라도 정상적인 백엔드 서버를 이용해 Access Token을 받을 수 있는 것이다.
 이때 PKCE를 사용하면 이러한 인가 코드 주입 공격을 방지할 수 있다고 한다. PKCE의 방식은 아래와 같다.
+
+### Authorization Code Flow with PKCE
 
 ![pkce rfc7636](./pkce_rfc7636.png)
 
@@ -271,7 +275,7 @@ sequenceDiagram
 
 한마디로 PKCE는 공격자에게 인가 코드를 탈취당했을 경우를 대비해 클라이언트와 인가 서버가 서로 동일한 문자열을 공유하며, 해당 문자열을 암호화한 값을 주고받으며 위조 및 탈취를 방지하는 것이다.
 
-### BFF
+### Authorization Code Flow with PKCE and BFF
 
 프론트에서 Access Token을 유지하는 구상 3의 방식은 Refresh Token을 활용한 로그인 연장 기능이 없어, 사용자가 일정 시간이 지나면 다시 로그인을 해야 한다. 안전하고 지속적인 인증을 위해서는 Backend에서도 대응이 필요하지 않을까 하는 생각이 들었다.
 
@@ -282,7 +286,7 @@ sequenceDiagram
 
 이 문서는 제목부터 'Best Current Practice for OAuth 2.0 Security'이고, 2025년에 업데이트 된 최신 OAuth 2.0 보안 권장 사항을 담고 있다.
 결론적으로 말하면, 아쉽게도 나는 이 문서를 100% 이해할 수는 없었다.
-하지만 2. Best Practices의 번역본은 아래와 같이 남겨둔다. 물론 번역은 GPT를 이용했다.
+하지만 '2. Best Practices'의 번역본은 아래와 같이 남겨둔다. 물론 번역은 GPT를 이용했다.
 
 <details>
   <summary>[번역] RFC 9700 Best Current Practice for OAuth 2.0 Security - 2. Best Practices </summary>
@@ -407,16 +411,13 @@ sequenceDiagram
 이번에 선택한 키워드는 PKCE 그리고 Backend이다.
 
 > The combination of Authorization Code Flow with PKCE and the Backend for Frontend (BFF) pattern represents the most secure approach available as of 2024.
->
-> _- [Authorization Code Flow with PKCE and BFF](https://docs.abblix.com/docs/openid-connect-flows-explained-simply-from-implicit-flows-to-authorization-code-flows-with-pkce-and-bff#authorization-code-flow-with-pkce-and-bff)_
 
-그리고 위와 같은 글을 발견했다.
-PKCE에 BFF를 적용해 보안을 강화하는 방법에 관한 내용이다.
-2024년 기준으로 가장 안전한 방법이라고 한다.
-PKCE에 BFF 패턴을 적용하는 방법에 대한 [공식 문서](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps#section-6.1)가 있었다.
+그러던 중 위와 같은 [PKCE에 BFF를 적용](https://docs.abblix.com/docs/openid-connect-flows-explained-simply-from-implicit-flows-to-authorization-code-flows-with-pkce-and-bff#authorization-code-flow-with-pkce-and-bff)해 보안을 강화하는 방법에 대한 글을 발견했다.
+2024년 기준으로 가장 안전한 방식이라고 한다.
+이렇게 PKCE에 BFF 패턴을 적용하는 내용은 [공식 문서](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps#section-6.1)에도 정리되어 있었다.
 
 <details>
-    <summary>[번역] OAuth 2.0 for Browser-Based Applications - 6.1 BFF</summary>
+    <summary>[번역] OAuth 2.0 for Browser-Based Applications - 6.1 Backend For Frontend (BFF)</summary>
 
         6.1. Backend For Frontend (BFF)
 
@@ -452,9 +453,24 @@ PKCE에 BFF 패턴을 적용하는 방법에 대한 [공식 문서](https://data
 
 :::tip BFF(Backend For Frontend)란?
 
-BFF란 Backend For Frontend의 줄임말로, 프론트엔드에 표현될 데이터를 위한 백엔드 즉, 프론트엔드 데이터에 대한 책임을 백엔드가 가진다는 것을 의미합니다. 백엔드는 당연히 프론트엔드에 표현되는 데이터를 제공하니, 기존 방식과 BFF가 무엇이 다른지 아직은 감이 안 오실 텐데요. BFF는 단순히 데이터를 제공하는 것에서 나아가 프론트엔드 친화적으로 데이터를 제공합니다.
+    ```mermaid
 
-[BFF - kakaopay tech blog](https://tech.kakaopay.com/post/bff_webflux_coroutine/)
+    flowchart TD
+        A[Browser] <--> B[BFF]
+        B <--> C[User Service]
+        B <--> D[Item Service]
+        B <--> E[Order Service]
+
+    ```
+
+위의 경우를 해결하기 위해 등장한 것이 BFF이다. BFF란 Backend For Frontend의 약자로, 말 그대로 프론트엔드를 위한 백엔드를 의미한다. 즉, 프론트엔드를 요구사항에 맞게 구현하기 위해 도움을 주는 백엔드라고 간단하게 정의할 수 있다.
+
+-   여러 API를 호출하여 프론트엔드에 맞게 처리를 하여 제공을 할 수 있다.
+-   BFF에서 여러 API를 호출한 다음 프론트엔드 화면 요구사항에 맞게 데이터를 가공하여 제공을 하여 프론트엔드는 구체적인 구현에 대한 내용을 감추고 화면 구현과 유저 인터렉션에 대해서만 신경을 쓸수가 있게 된다.
+-   데이터를 전송하는 과정에서 불필요한 데이터 혹은 보안에 민감한 정보들이 존재할 경우 숨길 수 있다.
+-   예를 들어, 결제를 위한 API KEY와 SECRET KEY가 있다고 할 때, 브라우저에서 네트워크 통신을 하게 되면 노출될 가능성이 높아져 문제가 발생할 수가 있다. 이럴 때 BFF에서 정보를 보관하고 API 요청 시 사용을 하게 되면 브라우저 네트워크 통신에 숨길 수 있게 된다.
+-   무거운 연산을 대신 처리할 수 있다.
+-   프론트엔드에서 무거운 연산을 할 경우 렌더링 성능에 악영향을 끼칠 수 있다. 이런 경우 무거운 연산을 BFF에서 처리를 하여 프론트엔드에 제공을 하여 렌더링 성능을 개선할 수 있다. [출처](https://dev-bak.tistory.com/58)
 
 :::
 
@@ -489,20 +505,20 @@ BFF란 Backend For Frontend의 줄임말로, 프론트엔드에 표현될 데이
 -   Access Token을 프론트엔드에 노출하지 않음 (BFF)
     > 액세스 토큰을 송신자 제약 방식으로 적용해야 하며, 이를 통해 탈취된 액세스 토큰의 오용을 방지해야 합니다.
 -   CSRF 공격 방지 (state 값 사용)
-    > 클라이언트는 교차 사이트 요청 위조(CSRF)를 방지해야 합니다. 여기서 CSRF는 인증 서버가 아닌 악의적인 제3자가 리디렉션 엔드포인트에 요청을 보내는 것을 의미합니다(자세한 내용은 RFC6819의 4.4.1.8절 참조). 인증 서버가 PKCE(Proof Key for Code Exchange, RFC7636)를 지원하는 것이 확인된 경우, 클라이언트는 PKCE에서 제공하는 CSRF 보호 기능을 사용할 수 있습니다. OpenID Connect 흐름에서는 nonce 매개변수가 CSRF 보호를 제공합니다. 그렇지 않은 경우, 사용자 에이전트와 안전하게 결합된 일회성 CSRF 토큰을 state 매개변수에 포함하여 CSRF를 방지해야 합니다.
-    <details>
-    <summary>`state`와 `code_challenge` 비교</summary>
-    | 매개변수                           | 정의                                                                | 목적                |
-        | ---------------------------------- | ------------------------------------------------------------------- | ------------------- |
-        | state                           | Client가 인증 서버에 보내는 인증 요청에 포함된 임의로 생성된 값 | CSRF 공격 방지      |
-        | code_challenge (code_verifier) | code_verifier를 해싱하거나 변환하여 생성된 값                       | 인가 코드 탈취 방지 |
-    </details>
+
+        > 클라이언트는 교차 사이트 요청 위조(CSRF)를 방지해야 합니다. 여기서 CSRF는 인증 서버가 아닌 악의적인 제3자가 리디렉션 엔드포인트에 요청을 보내는 것을 의미합니다(자세한 내용은 RFC6819의 4.4.1.8절 참조). 인증 서버가 PKCE(Proof Key for Code Exchange, RFC7636)를 지원하는 것이 확인된 경우, 클라이언트는 PKCE에서 제공하는 CSRF 보호 기능을 사용할 수 있습니다. OpenID Connect 흐름에서는 nonce 매개변수가 CSRF 보호를 제공합니다. 그렇지 않은 경우, 사용자 에이전트와 안전하게 결합된 일회성 CSRF 토큰을 state 매개변수에 포함하여 CSRF를 방지해야 합니다.
+
+        :::tip `state`와 `code_challenge` 비교
+
+        | 매개변수                       | 정의                                                            | 목적                |
+        | ------------------------------ | --------------------------------------------------------------- | ------------------- |
+        | state                          | Client가 인증 서버에 보내는 인증 요청에 포함된 임의로 생성된 값 | CSRF 공격 방지      |
+        | code_challenge (code_verifier) | code_verifier를 해싱하거나 변환하여 생성된 값                   | 인가 코드 탈취 방지 |
+
+        :::
+
 -   Refresh Token 탈취 및 재사용 공격 방지 (RTR)
     > 공개 클라이언트의 리프레시 토큰은 반드시 송신자 제약을 적용하거나 리프레시 토큰 회전(RTR)을 사용해야 합니다(4.14절 참조). RFC6749에 따르면, 기밀 클라이언트의 경우 리프레시 토큰은 발급된 클라이언트만 사용할 수 있습니다.
-
-<br/>
-<br/>
-<br/>
 
 :::note 참고
 
@@ -520,5 +536,6 @@ BFF란 Backend For Frontend의 줄임말로, 프론트엔드에 표현될 데이
 -   [The Back-end for Front-end Pattern (BFF)](https://philcalcado.com/2015/09/18/the_back_end_for_front_end_pattern_bff.html)
 -   [OAuth 2.0 for Browser-Based Applications](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps#section-6.1)
 -   [The Backend for Frontend Pattern](https://auth0.com/blog/the-backend-for-frontend-pattern-bff/)
+-   [BFF란](https://dev-bak.tistory.com/58)
 
 :::
