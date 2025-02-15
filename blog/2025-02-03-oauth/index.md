@@ -107,7 +107,7 @@ ResourceServer->>Client: 요청된 데이터 반환
     - 클라이언트는 인가 서버의 Access Token을 저장
     - Access Token을 사용해 리소스 서버에서 데이터를 가져온다.
 
-## 프로젝트에 적용하기
+## 프로젝트 적용하기
 
 OAuth 로그인 구현은 크게 2가지 방식이 있다.
 
@@ -193,7 +193,7 @@ OAuth 로그인 구현은 크게 2가지 방식이 있다.
 >
 > _- [Okta의 RFC7636 문서 요약](https://www.oauth.com/oauth2-servers/pkce/)_
 
-PKCE(Proof Key for Code Exchange, "[pixy](https://datatracker.ietf.org/doc/html/rfc7636)"로 발음)는 원래 모바일 앱에서 인가 코드 흐름(Authorization Code Flow)을 보호하기 위해 설계되었고, 이후 싱글 페이지 애플리케이션(SPA)에서도 사용하도록 권장되었다.
+PKCE("[pixy](https://datatracker.ietf.org/doc/html/rfc7636)"로 발음)는 원래 모바일 앱에서 인가 코드 흐름(Authorization Code Flow)을 보호하기 위해 설계되었고, 이후 싱글 페이지 애플리케이션(SPA)에서도 사용하도록 권장되었다.
 그리고 몇 년 후 인가 코드 주입(Authorization Code Injection) 공격을 방지할 수 있다는 점에서 모든 유형의 OAuth 클라이언트에 유용하다는 사실이 확인된다.
 심지어 Client Secret을 사용하는 웹 서버 기반 애플리케이션에서도 마찬가지이다.
 
@@ -203,7 +203,7 @@ PKCE가 모바일 앱과 SPA에서 먼저 사용되었기 때문에, 종종 Clie
 
 예를 들면, 기존의 OAuth 방식엔 아래와 같은 인가 코드 주입 공격 시나리오가 생길 수 있다. ([RFC 9700 - 4.5. Authorization Code Injection](https://datatracker.ietf.org/doc/rfc9700))
 
-### Authorization Code Injection
+### Authorization Code Injection Attack
 
 ![authorization code injection](./authorization_code_injection.png)
 
@@ -235,8 +235,9 @@ sequenceDiagram
 -   백엔드는 정상적인 인가 코드라 판단하고, `client_secret`을 사용해 Access Token을 인가 서버로 요청한다.
 -   결과적으로 공격자는 피해자의 계정으로 로그인 할 수 있게 된다.
 
-즉, 인가 코드만 탈취하면 `client_secret`을 몰라도 정상적인 백엔드 서버를 이용해 Access Token을 받을 수 있는 것이다.
-이때 PKCE를 사용하면 이러한 인가 코드 주입 공격을 방지할 수 있다고 한다. PKCE의 방식은 아래와 같다.
+즉, 인가 코드만 탈취하면 `client_secret`을 몰라도 정상적인 백엔드 서버를 이용해 Access Token을 받을 수 있는 것이다. 이때 PKCE를 사용하면 이러한 인가 코드 주입 공격을 방지할 수 있다.
+
+PKCE의 기본적인 방식은 아래와 같다.
 
 ### Authorization Code Flow with PKCE
 
@@ -277,19 +278,282 @@ sequenceDiagram
 
 ## 프로젝트 개선하기
 
-구상 1, 구상 2, 구상 3를 보았다.
-그리고 어떤 방식을 현 상황에서 적용해야할지 그리고 차선택지로 뭐가 좋을지 고민하기 위해 표를 그렸다.
-| - | **기존** | **구상 1** | **구상 2** | **구상 3** |
-| ---------------------- | ------------------------------- | ------------------- | ----------------------------- | ------------------------- |
-| **방식** | URL로 Access/Refresh Token 전달 | 프론트 저장 | HttpOnly Secure 쿠키 | PKCE |
-| **보안 수준** | 매우 낮음 | 낮음 | 높음 | 중간 |
-| **Access Token 저장** | 프론트엔드 | 프론트엔드 | 백엔드 쿠키(HttpOnly, Secure) | 프론트엔드 |
-| **Refresh Token 저장** | 프론트엔드 | 프론트엔드 | 백엔드 쿠키(HttpOnly, Secure) | 저장 안함 |
-| **CSRF 방어** | 불가능 | 불가능 | 가능 | 불가능 (State 필요) |
-| **Token 탈취 위협** | 매우 높음 (URL 노출) | 높음 (프론트 저장) | 낮음 (백엔드 보안) | 중간 |
-| **FE 변경 요구 사항** | - | 토큰 전달 방식 변경 | 쿠키 방식 적용 | PKCE 적용 |
-| **BE 변경 요구 사항** | - | 토큰 전달 방식 변경 | 쿠키 처리 | PKCE 처리 |
-| **OAuth 표준 준수** | 위반 | 부분 | 부분 | 준수 |
+### 개선안 비교
+
+현 상황에서 어떤 방식을 적용하는 게 좋을지 기존 방식, 구상 1, 구상 2, 구상 3을 표로 작성해보았다.
+
+| -                      | **기존**                        | **구상 1**          | **구상 2**                    | **구상 3**                   |
+| ---------------------- | ------------------------------- | ------------------- | ----------------------------- | ---------------------------- |
+| **방식**               | URL로 Access/Refresh Token 전달 | 프론트 저장         | HttpOnly Secure 쿠키          | PKCE                         |
+| **보안 수준**          | 매우 낮음                       | 낮음                | 높음                          | 중간                         |
+| **Access Token 저장**  | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 프론트엔드                   |
+| **Refresh Token 저장** | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 저장 안함                    |
+| **CSRF 방어**          | 불가능                          | 불가능              | 가능                          | 불가능 (`state` 사용시 가능) |
+| **Token 탈취 위협**    | 매우 높음 (URL 노출)            | 높음 (프론트 저장)  | 낮음 (백엔드 보안)            | 중간                         |
+| **FE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 방식 적용                | PKCE 적용                    |
+| **BE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 처리                     | PKCE 처리                    |
+| **OAuth 표준 준수**    | 위반                            | 부분                | 부분                          | 준수                         |
+
+### 기존 방식
+
+<br/>
+
+```mermaid
+
+sequenceDiagram
+    participant User as 사용자
+    participant Frontend as 프론트엔드
+    participant AuthServer as 카카오 인가 서버
+    participant Backend as 백엔드 (API 서버)
+
+    User ->> Frontend: 1. 로그인 버튼 클릭
+    Frontend ->> AuthServer: 2. OAuth 인증 요청 (client_id, redirect_uri 포함)
+    AuthServer ->> Backend: 3. 인가 코드(code) 포함하여 리다이렉트
+
+    Backend ->> AuthServer: 4. 인가 코드로 Access Token 요청
+    AuthServer ->> Backend: 5. Access Token, Refresh Token 반환
+    Backend ->> Frontend: 6. Access Token, Refresh Token 포함하여 리디렉트
+
+    Frontend ->> Frontend: 7. URL에서 Access Token, Refresh Token 추출
+    Frontend ->> Frontend: 8. setTokens(Access Token, Refresh Token, userId) 저장
+    Frontend ->> User: 9. 로그인 완료 (저장된 토큰 사용)
+
+```
+
+<br/>
+
+```tsx title="/src/pages/auth/LoginPage.tsx"
+const KAKAO_CLIENT_ID = "eeerandomclientid1234sample0o0o0";
+// 1. 서버에서 직접 인가 코드 처리 후 accessToken, refreshToken을 URL로 반환
+const KAKAO_REDIRECT_URI =
+    "http://api.haeyum.com/oauth/kakao/authorize/fallback";
+
+const LoginPage = () => {
+    const handleRedirectToKakao = () => {
+        const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${KAKAO_CLIENT_ID}&redirect_uri=${KAKAO_REDIRECT_URI}`;
+        window.location.href = kakaoAuthUrl;
+    };
+
+    return (
+        <FixedBottom>
+            <Button onClick={handleRedirectToKakao}>
+                <KakaoIcon
+                    src={IconKakao}
+                    alt="카카오 로그인"
+                    role="presentation"
+                />
+                <span>카카오 로그인</span>
+            </Button>
+        </FixedBottom>
+    );
+};
+```
+
+```tsx title="/src/pages/auth/CallbackPage.tsx"
+useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // 2. URL에서 accessToken, refreshToken을 받아 저장 -> URL에 Token 노출
+    const accessToken = urlParams.get("accessToken");
+    const refreshToken = urlParams.get("refreshToken");
+    const userId = urlParams.get("socialSub");
+
+    if (accessToken && refreshToken && userId) {
+        setTokens(accessToken, refreshToken, userId);
+        navigate("/");
+    } else {
+        setErrorMessage("토큰이 없습니다.");
+        navigate("/login");
+    }
+}, [navigate, setTokens]);
+```
+
+### 구상 1 적용
+
+중요한 것은 기존의 저장 방식은 보안에 특히 취약하다는 점이다. 가장 빠르게 변경할 수 있는 구상 1을 우선적으로 적용해 보았다.
+
+<br/>
+
+```mermaid
+
+sequenceDiagram
+    participant User as 사용자
+    participant Frontend as 프론트엔드
+    participant AuthServer as 카카오 인가 서버
+    participant Backend as 백엔드 (API 서버)
+
+    User ->> Frontend: 1. 로그인 버튼 클릭
+    Frontend ->> AuthServer: 2. OAuth 인증 요청 (client_id, redirect_uri 포함)
+    AuthServer ->> Frontend: 3. 인가 코드(code) 포함하여 리다이렉트
+
+    Frontend ->> Backend: 4. POST로 인가 코드를 body에 담아 전달
+    Backend ->> AuthServer: 5. 인가 코드로 Access Token 요청
+    AuthServer ->> Backend: 6. Access Token, Refresh Token 반환
+    Backend ->> Frontend: 7. Access Token, Refresh Token 응답 (JSON)
+
+    Frontend ->> Frontend: 8. setTokens(Access Token, Refresh Token, userId) 저장
+    Frontend ->> User: 9. 로그인 완료 (저장된 토큰 사용)
+
+```
+
+<br/>
+
+```tsx title="/src/pages/auth/LoginPage.tsx"
+const KAKAO_CLIENT_ID = "eeerandomclientid1234sample0o0o0";
+// 1. 프론트엔드에서 인가 코드 직접 처리
+const KAKAO_REDIRECT_URI =
+    "https://www.haeyum.kr/oauth/kakao/authorize/fallback";
+
+const LoginPage = () => {
+    const handleRedirectToKakao = () => {
+        const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${KAKAO_CLIENT_ID}&redirect_uri=${KAKAO_REDIRECT_URI}`;
+        window.location.href = kakaoAuthUrl;
+    };
+
+    return (
+        <FixedBottom>
+            <Button onClick={handleRedirectToKakao}>
+                <KakaoIcon
+                    src={IconKakao}
+                    alt="카카오 로그인"
+                    role="presentation"
+                />
+                <span>카카오 로그인</span>
+            </Button>
+        </FixedBottom>
+    );
+};
+```
+
+```tsx title="/src/pages/auth/CallbackPage.tsx"
+useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    // 2. URL에서 인가 코드(code) 받아와 서버에 토큰 요청
+    const code = urlParams.get("code");
+
+    if (!code) {
+        setErrorMessage("인증 코드가 없습니다.");
+        navigate("/login");
+        return;
+    }
+
+    mutate(code, {
+        onSuccess: (data) => {
+            const { accessToken, refreshToken, socialSub: userId } = data;
+
+            if (!accessToken || !refreshToken || !userId) {
+                throw new Error("토큰 값을 확인해주세요.");
+            }
+
+            // 4. 기존 방식과 동일하지만, 토큰을 서버에서 받아와 프론트에 저장
+            setTokens(accessToken, refreshToken, userId);
+            navigate("/");
+        },
+        onError: () => {
+            setErrorMessage("로그인 중 오류가 발생했습니다.");
+            navigate("/login");
+        },
+    });
+}, [navigate, mutate, setTokens]);
+```
+
+```tsx title="/src/common/apis/user/index.ts"
+// 3. POST body에 인가 코드(code) 전달 -> HTTPS 사용시 body가 암호화되어 code 노출 위험 감소
+export const userApi = {
+    postAuthCode: async (code: string) => {
+        const response = await privateApiInstance.post<TokenResponse>(
+            "/oauth/kakao/login",
+            { code }
+        );
+        return response.data;
+    },
+};
+```
+
+### 구상 3 적용
+
+구상 1로 구현해 배포를 한 후, OAuth 표준에 맞는 구상 3을 적용하기 위한 작업을 시작했다. 구상 1과 달리 수정해야할 부분이 많아서 시간이 조금 걸렸다.
+
+![카카오 PKCE Dev Talk](./kakao_dev_talk.png)
+
+먼저 문제는 카카오 개발문서가 PKCE에 대한 가이드가 부족한 상태여서, 위
+[카카오 PKCE Dev Talk](https://devtalk.kakao.com/t/code-challenge-code-verifier/136785) 내용을 참고해 [구글 로그인](https://developers.google.com/identity/protocols/oauth2/native-app) 문서를 기반으로 구현하였다.
+
+초기 설계 단계였다면 원하는 방향으로 편하게 구현할 수 있었겠지만, 이번 경우는 기존의 코드를 유지하면서 보안적으로 최선의 방법을 찾아야 했다.
+지금은 프론트에서 POST를 통해 인가 코드를 백엔드로 보내고, 백엔드는 이를 처리해 `access_token`과 `user_id`를 프론트로 반환하는 구조였다.
+
+하지만 PKCE를 도입하면서 `access_token`이 프론트로 직접 들어오게 됐고, 동시에 `id_token`도 프론트로 직접 들어오는 상황이 되었다.
+
+```text title="payload - https://kauth.kakao.com/oauth/token"
+grant_type: authorization_code
+client_id: eeeclientidexamplea6d87feeef0261
+redirect_uri: http://localhost:3000/oauth/kakao/authorize/fallback
+code: authCodeExample_n0U0HTvQ_authCodeExample_h1QIVr_authCodeExample_YStp2f9245YStp2f924YSt
+code_verifier: codeVerifierExample2i9zkdddCLivq9OjtcriTdd8
+```
+
+```json title="response - https://kauth.kakao.com/oauth/token"
+{
+    "access_token": "AAaccessTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMBAdDMFVA",
+    "token_type": "bearer",
+    "refresh_token": "AArefreshTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVA",
+    "id_token": "AAidTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVAAAidTokenTokenWERWFDASDF.assd2asde3efa4sdfas5L4pSMFDMdDMFVAAAidTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVAAAidT.okenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVA",
+    "expires_in": 21599,
+    "scope": "account_email profile_image profile_nickname",
+    "refresh_token_expires_in": 5183999
+}
+```
+
+### id_token을 어떻게 처리할 것인가
+
+처음에는 `id_token`이 뭔지 몰랐고, 백엔드에서 필요하다고 하니 `access_token`과 함께 보내려고 했다. 하지만 찾아보니 JWT(JSON Web Token) 형식의 `id_token`을 디코딩하면 프론트에서도 사용자 정보를 확인할 수 있다는 것을 알게 됐다.
+그렇다면 굳이 백엔드에서 처리하지 않고, 프론트에서 바로 사용자 정보를 보여줄 수 있다는 건데.
+과연 이 개인 정보를 이렇게 프론트에서 관리하는게 맞을까? 싶었다.
+
+그렇게 더 나은 방법을 찾기 위해 카카오 로그인 문서와 구글 로그인 문서를 뒤지기 시작했고, OIDC(OpenID Connect)라는 것을 알게 되었다.
+
+### 그럼 OIDC를 활용하자
+
+OIDC는 OpenID Connect의 약자로 OAuth 2.0 사양 프레임워크를 기반으로 하는 상호 운용 가능한 인증 프로토콜이다. OIDC의 핵심 기능 중 하나가 `id_token`의 유효성 검증이다.
+
+백엔드에서 `id_token`의 서명을 검증한 후, 검증된 사용자 정보만 프론트에 반환하는 방법이다.
+이 방법을 사용하면 프론트에서 `id_token`를 직접 다루지 않을 수 있고, 또 검증된 정보만 사용하게 되기 때문에 보안을 강화할 수 있다.
+
+### 최종 선택
+
+최종적으로 프론트에서 `access_token`과 `id_token`을 백엔드로 보내 검증하는 방식을 채택했다.
+
+프론트에서 `id_token`을 저장하거나 직접 관리하지 않기 때문에 XSS 공격에 유리해진다.
+또, 백엔드가 카카오의 공개 키로 서명을 검증해서, 변조 토큰 사용을 방지할 수 있다.
+그리고 검증된 정보만 사용하기 때문에, 사용자 정보를 안전하게 처리하게 된다.
+
+개선된 인증 프로세스는 아래와 같다.
+
+```mermaid
+sequenceDiagram
+    participant User as 사용자
+    participant Frontend as 프론트엔드
+    participant OAuthServer as OAuth 서버 (카카오)
+    participant Backend as 백엔드
+
+    User->>Frontend: 로그인 버튼 클릭
+    Frontend->>Frontend: PKCE 생성 (code_verifier, code_challenge) 저장
+    Frontend->>OAuthServer: 인증 요청 (code_challenge 포함)
+    OAuthServer-->>Frontend: 인가 코드 (authorization_code) 반환
+
+    Frontend->>OAuthServer: 토큰 요청 (authorization_code + code_verifier 포함)
+    OAuthServer-->>Frontend: accessToken, idToken 반환
+
+    Frontend->>Frontend: accessToken 저장  (LocalStorage, Zustand)
+    Frontend->>Backend: accessToken 전송, idToken 검증 요청
+    Backend->>OAuthServer: idToken 서명 검증
+    OAuthServer-->>Backend: 검증 성공
+    Backend-->>Frontend: userId 반환
+
+    Frontend->>Frontend: userId 저장
+    Frontend->>User: 로그인 완료 후 메인 페이지로 이동
+
+```
 
 :::note 참고
 
@@ -307,6 +571,7 @@ sequenceDiagram
 -   [The Back-end for Front-end Pattern (BFF)](https://philcalcado.com/2015/09/18/the_back_end_for_front_end_pattern_bff.html)
 -   [OAuth 2.0 for Browser-Based Applications](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps#section-6.1)
 -   [The Backend for Frontend Pattern](https://auth0.com/blog/the-backend-for-frontend-pattern-bff/)
+-   [PKCE에 BFF를 적용](https://docs.abblix.com/docs/openid-connect-flows-explained-simply-from-implicit-flows-to-authorization-code-flows-with-pkce-and-bff#authorization-code-flow-with-pkce-and-bff)
 -   [BFF란](https://dev-bak.tistory.com/58)
 
 :::
