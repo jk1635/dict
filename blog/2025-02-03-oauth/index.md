@@ -298,7 +298,9 @@ sequenceDiagram
 
 <br/>
 
-```mermaid
+![url architecture](./url_architecture.png)
+
+<!-- ```mermaid
 
 sequenceDiagram
     participant User as 사용자
@@ -318,7 +320,7 @@ sequenceDiagram
     Frontend ->> Frontend: 8. setTokens(Access Token, Refresh Token, userId) 저장
     Frontend ->> User: 9. 로그인 완료 (저장된 토큰 사용)
 
-```
+``` -->
 
 <br/>
 
@@ -377,7 +379,9 @@ useEffect(() => {
 
 <br/>
 
-```mermaid
+![no url architecture](./no_url_architecture.png)
+
+<!-- ```mermaid
 
 sequenceDiagram
     participant User as 사용자
@@ -397,7 +401,7 @@ sequenceDiagram
     Frontend ->> Frontend: 8. setTokens(Access Token, Refresh Token, userId) 저장
     Frontend ->> User: 9. 로그인 완료 (저장된 토큰 사용)
 
-```
+``` -->
 
 <br/>
 
@@ -573,33 +577,37 @@ OIDC의 개념을 발견하고, 백엔드에서 `id_token`의 서명을 검증�
 
 개선된 인증 프로세스는 아래와 같다.
 
-```mermaid
+<br/>
+
+![pkce result architecture](./pkce_result_architecture.png)
+
+<!-- ```mermaid
 sequenceDiagram
     participant User as 사용자
     participant Frontend as 프론트엔드
     participant OAuthServer as OAuth 서버 (카카오)
     participant Backend as 백엔드
 
-    User->>Frontend: 로그인 버튼 클릭
-    Frontend->>Frontend: code_verifier 생성 및 저장
-    Frontend->>Frontend: code_challenge 생성
-    Frontend->>OAuthServer: 인증 요청 (code_challenge, code_challenge_method, state 포함)
-    OAuthServer-->>Frontend: 인가 코드 (authorization_code, state 포함) 반환
+    User->>Frontend: 1. 로그인 버튼 클릭
+    Frontend->>Frontend: 2. code_verifier 생성 및 저장
+    Frontend->>Frontend: 3. code_challenge 생성
+    Frontend->>OAuthServer: 4. 인증 요청 (code_challenge, code_challenge_method, state 포함)
+    OAuthServer->>Frontend: 5. 인가 코드 (authorization_code, state 포함) 반환
 
-    Frontend->>Frontend: 응답받은 state와 저장된 state 비교 (CSRF 검증)
-    Frontend->>OAuthServer: 토큰 요청 (authorization_code, code_verifier 포함)
-    OAuthServer-->>Frontend: access_token, id_token 반환
+    Frontend->>Frontend: 6. 응답받은 state와 저장된 state 비교 (CSRF 검증)
+    Frontend->>OAuthServer: 7. 토큰 요청 (authorization_code, code_verifier 포함)
+    OAuthServer->>Frontend: 8. access_token, id_token 반환-
 
-    Frontend->>Frontend: access_token 저장
-    Frontend->>Backend: access_token 전송, id_token 검증 요청
-    Backend->>OAuthServer: id_token 서명 검증
-    OAuthServer-->>Backend: 검증 성공
-    Backend-->>Frontend: user 데이터 추출 후 반환
+    Frontend->>Frontend: 9. access_token 저장
+    Frontend->>Backend: 10. access_token 전송, id_token 검증 요청
+    Backend->>OAuthServer: 11. id_token 서명 검증
+    OAuthServer->>Backend: 12. 검증 성공-
+    Backend->>Frontend: 13. user 데이터 추출 후 반환-
 
-    Frontend->>Frontend: user_id 저장
-    Frontend->>User: 로그인 완료 후 메인 페이지로 이동
+    Frontend->>Frontend: 14. user_id 저장
+    Frontend->>User: 15. 로그인 완료 후 메인 페이지로 이동
 
-```
+``` -->
 
 <br/>
 
