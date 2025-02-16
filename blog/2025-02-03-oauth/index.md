@@ -523,7 +523,7 @@ OIDC를 발견하고, 백엔드에서 `id_token`의 서명을 검증한 후, 검
 
 최종적으로 프론트에서 `access_token`과 `id_token`을 백엔드로 보내 검증하는 방식을 채택했다.
 
-프론트에서 `id_token`을 저장하거나 직접 관리하지 않기 때문에 XSS 공격에 유리해진다.
+프론트에서 `id_token`을 저장하거나 직접 관리하지 않기 때문에 XSS 공격에 대한 위험이 줄어든다.
 또, 백엔드가 카카오의 공개 키로 서명을 검증해서, 변조 토큰 사용을 방지할 수 있다.
 그리고 프론트는 검증된 정보만 사용하기 때문에, 사용자 정보를 안전하게 처리하게 된다.
 
@@ -583,7 +583,7 @@ sequenceDiagram
 먼저 code_verifier, code_challenge를 생성하는 유틸 함수를 만든다.
 여기에서는 CSRF 방지를 위한 state도 함께 생성했다.
 
-```tsx
+```tsx title="/src/pages/auth/login/utils/generator.ts"
 const base64Encode = (arrayBuffer: ArrayBuffer) => {
     return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
         .replace(/\+/g, "-")
@@ -622,7 +622,7 @@ const generateState = () => {
 기존의 localStorage 저장 방식에서 sessionStorage로 변경해 보안을 높였다.
 sessionStorage를 사용하면 브라우저가 종료 시 데이터가 삭제되기 때문에, 보안성을 조금 더 높일 수 있다.
 
-```tsx
+```tsx title="/src/pages/auth/login/index.tsx"
 const handleRedirectToKakao = async () => {
     const codeVerifier = generateCodeVerifier();
     sessionStorage.setItem("code_verifier", codeVerifier);
@@ -639,7 +639,7 @@ const handleRedirectToKakao = async () => {
 
 인가 서버로 보내는 정보는 아래와 같다.
 
-```text
+```text title="KakaoAuthUrl"
 https://kauth.kakao.com/oauth/authorize?response_type=code
     &client_id=eeea6d87ff0261c7795936bbea225e5c
     &redirect_uri=http://localhost:3000/oauth/kakao/authorize/fallback
@@ -653,7 +653,7 @@ https://kauth.kakao.com/oauth/authorize?response_type=code
 인가 코드 요청 과정에서 `generateCodeChallenge(codeVerifier)` 사용 시, `await`을 누락해 `code_challenge`가 올바르게 생성되지 않아 카카오 서버에서 400 오류가 발생했다.
 당연하게도 `generateCodeChallenge(codeVerifier)`는 해싱하는 **비동기 함수**이기 때문에, 해싱이 완료된 다음에 값을 전달해야 한다.
 
-```tsx
+```tsx title="/src/pages/auth/login/index.tsx"
 const codeChallenge = await generateCodeChallenge(codeVerifier);
 ```
 
@@ -674,7 +674,7 @@ const codeChallenge = await generateCodeChallenge(codeVerifier);
 로그인 후 리다이렉션 된 페이지에서 인가 코드(`code`)와 `state`를 받는다.
 `state`는 기존에 저장된 `originState`와 비교하고, `codeVerifier`도 sessionStorage에서 가져온다.
 
-```tsx
+```tsx title='/src/pages/auth/callback/index.tsx'
 const urlParams = new URLSearchParams(window.location.search);
 const code = urlParams.get("code");
 const state = urlParams.get("state");
@@ -682,7 +682,7 @@ const originState = sessionStorage.getItem("state");
 const codeVerifier = sessionStorage.getItem("code_verifier");
 ```
 
-```tsx
+```tsx title='/src/pages/auth/callback/index.tsx'
 if (!code) {
     setErrorMessage("인증 코드가 없습니다.");
     navigate("/login");
@@ -705,7 +705,7 @@ if (!codeVerifier) {
 #### 4. Access Token 요청
 
 위 데이터를 검증한 후, 받은 인가 코드와 기존에 로그인 페이지에서 생성했던 `codeVerifier`를 토큰 서버로 보내 Access Token을 요청한다.
-토큰 서버는 `code_verifier`를 `code_challenge_method`로 검증한 후. 이후 `access_token`과 `id_token`을 반환한다.
+토큰 서버는 `code_verifier`를 `code_challenge_method`로 확인하고, 이후 `access_token`과 `id_token`을 반환한다.
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -719,7 +719,7 @@ import TabItem from '@theme/TabItem';
   </TabItem>
 </Tabs>
 
-```tsx
+```tsx title='/src/pages/auth/callback/index.tsx'
 const requestToken = async () => {
     try {
         const data = {
@@ -730,17 +730,16 @@ const requestToken = async () => {
             code_verifier: codeVerifier,
         };
 
+        const headers = {
+            "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+        };
+
         const params = new URLSearchParams(data);
 
         const response = await axios.post(
             "https://kauth.kakao.com/oauth/token",
             params,
-            {
-                headers: {
-                    "Content-Type":
-                        "application/x-www-form-urlencoded;charset=utf-8",
-                },
-            }
+            { headers }
         );
 
         const { access_token, id_token } = response.data;
