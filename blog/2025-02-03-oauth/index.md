@@ -745,7 +745,7 @@ const requestToken = async () => {
 
         const { access_token, id_token } = response.data;
 
-        if (!response.data.access_token) {
+        if (!access_token) {
             throw new Error("토큰이 유효하지 않습니다.");
         }
 
