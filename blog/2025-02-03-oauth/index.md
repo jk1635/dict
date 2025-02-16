@@ -282,17 +282,17 @@ sequenceDiagram
 
 현 상황에서 어떤 방식을 적용하는 게 좋을지 기존 방식, 구상 1, 구상 2, 구상 3을 표로 작성해보았다.
 
-| -                      | **기존**                        | **구상 1**          | **구상 2**                    | **구상 3**                   |
-| ---------------------- | ------------------------------- | ------------------- | ----------------------------- | ---------------------------- |
-| **방식**               | URL로 Access/Refresh Token 전달 | 프론트 저장         | HttpOnly Secure 쿠키          | PKCE                         |
-| **보안 수준**          | 매우 낮음                       | 낮음                | 높음                          | 중간                         |
-| **Access Token 저장**  | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 프론트엔드                   |
-| **Refresh Token 저장** | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 저장 안함                    |
-| **CSRF 방어**          | 불가능                          | 불가능              | 가능                          | 불가능 (`state` 사용시 가능) |
-| **Token 탈취 위협**    | 매우 높음 (URL 노출)            | 높음 (프론트 저장)  | 낮음 (백엔드 보안)            | 중간                         |
-| **FE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 방식 적용                | PKCE 적용                    |
-| **BE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 처리                     | PKCE 처리                    |
-| **OAuth 표준 준수**    | 위반                            | 부분                | 부분                          | 준수                         |
+| -                      | **기존**                        | **구상 1**          | **구상 2**                    | **구상 3**          |
+| ---------------------- | ------------------------------- | ------------------- | ----------------------------- | ------------------- |
+| **방식**               | URL로 Access/Refresh Token 전달 | 프론트 저장         | HttpOnly Secure 쿠키          | PKCE                |
+| **보안 수준**          | 매우 낮음                       | 낮음                | 높음                          | 중간                |
+| **Access Token 저장**  | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 프론트엔드          |
+| **Refresh Token 저장** | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 저장 안함           |
+| **CSRF 방어**          | 불가능                          | 불가능              | 가능                          | `state` 사용시 가능 |
+| **Token 탈취 위협**    | 매우 높음 (URL 노출)            | 높음 (프론트 저장)  | 낮음 (백엔드 보안)            | 중간                |
+| **FE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 방식 적용                | PKCE 적용           |
+| **BE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 처리                     | PKCE 처리           |
+| **OAuth 표준 준수**    | 위반                            | 부분                | 부분                          | 준수                |
 
 ### 기존 방식
 
@@ -480,7 +480,7 @@ export const userApi = {
 [카카오 PKCE Dev Talk](https://devtalk.kakao.com/t/code-challenge-code-verifier/136785) 내용을 참고해 [구글 로그인](https://developers.google.com/identity/protocols/oauth2/native-app) 문서를 기반으로 구현하였다.
 
 초기 설계 단계였다면 원하는 방향으로 편하게 구현할 수 있었겠지만, 이번 경우는 기존의 코드를 유지하면서 보안적으로 최선의 방법을 찾아야 했다.
-지금은 프론트에서 POST를 통해 인가 코드를 백엔드로 보내고, 백엔드는 이를 처리해 `access_token`과 `user_id`를 프론트로 반환하는 구조였다.
+개선 이전의 상태는 프론트에서 POST를 통해 인가 코드를 백엔드로 보내고, 백엔드는 이를 처리해 `access_token`과 `user_id`를 프론트로 반환하는 구조였다.
 
 하지만 PKCE를 도입하면서 `access_token`이 프론트로 직접 들어오게 됐고, 동시에 `id_token`도 프론트로 직접 들어오는 상황이 되었다.
 
@@ -516,8 +516,8 @@ code_verifier: codeVerifierExample2i9zkdddCLivq9OjtcriTdd8
 
 OIDC는 OpenID Connect의 약자로 OAuth 2.0 사양 프레임워크를 기반으로 하는 상호 운용 가능한 인증 프로토콜이다. OIDC의 핵심 기능 중 하나가 `id_token`의 유효성 검증이다.
 
-백엔드에서 `id_token`의 서명을 검증한 후, 검증된 사용자 정보만 프론트에 반환하는 방법이다.
-이 방법을 사용하면 프론트에서 `id_token`를 직접 다루지 않을 수 있고, 또 검증된 정보만 사용하게 되기 때문에 보안을 강화할 수 있다.
+OIDC를 발견하고, 백엔드에서 `id_token`의 서명을 검증한 후, 검증된 사용자 정보만 프론트에 반환하는 방법을 생각해 볼 수 있었다.
+이 방법을 사용하면 프론트에서 `id_token`를 직접 다루지 않을 수 있고, 또 검증된 정보만 사용하게 되기 때문에 보안을 강화할 수 있을 것이다.
 
 ### 최종 선택
 
@@ -525,7 +525,7 @@ OIDC는 OpenID Connect의 약자로 OAuth 2.0 사양 프레임워크를 기반�
 
 프론트에서 `id_token`을 저장하거나 직접 관리하지 않기 때문에 XSS 공격에 유리해진다.
 또, 백엔드가 카카오의 공개 키로 서명을 검증해서, 변조 토큰 사용을 방지할 수 있다.
-그리고 검증된 정보만 사용하기 때문에, 사용자 정보를 안전하게 처리하게 된다.
+그리고 프론트는 검증된 정보만 사용하기 때문에, 사용자 정보를 안전하게 처리하게 된다.
 
 개선된 인증 프로세스는 아래와 같다.
 
@@ -537,23 +537,231 @@ sequenceDiagram
     participant Backend as 백엔드
 
     User->>Frontend: 로그인 버튼 클릭
-    Frontend->>Frontend: PKCE 생성 (code_verifier, code_challenge) 저장
-    Frontend->>OAuthServer: 인증 요청 (code_challenge 포함)
-    OAuthServer-->>Frontend: 인가 코드 (authorization_code) 반환
+    Frontend->>Frontend: code_verifier 생성 및 저장
+    Frontend->>Frontend: code_challenge 생성
+    Frontend->>OAuthServer: 인증 요청 (code_challenge, code_challenge_method, state 포함)
+    OAuthServer-->>Frontend: 인가 코드 (authorization_code, state 포함) 반환
 
-    Frontend->>OAuthServer: 토큰 요청 (authorization_code + code_verifier 포함)
-    OAuthServer-->>Frontend: accessToken, idToken 반환
+    Frontend->>Frontend: 응답받은 state와 저장된 state 비교 (CSRF 검증)
+    Frontend->>OAuthServer: 토큰 요청 (authorization_code, code_verifier 포함)
+    OAuthServer-->>Frontend: access_token, id_token 반환
 
-    Frontend->>Frontend: accessToken 저장  (LocalStorage, Zustand)
-    Frontend->>Backend: accessToken 전송, idToken 검증 요청
-    Backend->>OAuthServer: idToken 서명 검증
+    Frontend->>Frontend: access_token 저장
+    Frontend->>Backend: access_token 전송, id_token 검증 요청
+    Backend->>OAuthServer: access_token 서명 검증
     OAuthServer-->>Backend: 검증 성공
-    Backend-->>Frontend: userId 반환
+    Backend-->>Frontend: user 데이터 반환
 
-    Frontend->>Frontend: userId 저장
+    Frontend->>Frontend: user 데이터 반환
     Frontend->>User: 로그인 완료 후 메인 페이지로 이동
 
 ```
+
+<br/>
+
+<details open>
+<summary>용어 설명</summary>
+- `code_verifier` : 최소 43 ~ 최대 128 글자수의 Cryptographic Random String이다. [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~" 문자들로만 구성된다.([출처](https://developers.google.com/identity/protocols/oauth2/native-app))
+- `code_challenge` : SHA256 알고리즘으로 Code Verifier를 해싱한 후 Base64로 인코딩을 한 값.
+- `code_challenge_method` : code_challenge를 해싱하는데 사용한 메서드
+- `state` : Client가 인증 요청 시 생성하여 인증 서버에 전달하는 임의의 값으로, CSRF 공격을 방지하고 인증 요청의 상태를 유지하는 역할을 한다.
+:::info `state`와 `code_challenge` 비교
+
+| 매개변수                       | 정의                                                            | 목적                |
+| ------------------------------ | --------------------------------------------------------------- | ------------------- |
+| state                          | Client가 인증 서버에 보내는 인증 요청에 포함된 임의로 생성된 값 | CSRF 공격 방지      |
+| code_challenge (code_verifier) | code_verifier를 해싱하거나 변환하여 생성된 값                   | 인가 코드 탈취 방지 |
+
+:::
+
+</details>
+
+### PKCE 기반 카카오 로그인 구현하기
+
+#### 1. Code Verifier & Code Challenge & State 생성
+
+먼저 code_verifier, code_challenge를 생성하는 유틸 함수를 만든다.
+여기에서는 CSRF 방지를 위한 state도 함께 생성했다.
+
+```tsx
+const base64Encode = (arrayBuffer: ArrayBuffer) => {
+    return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=/g, "");
+};
+
+// Code Verifier 생성
+const generateCodeVerifier = () => {
+    const randomValues = new Uint8Array(32);
+    crypto.getRandomValues(randomValues);
+    return base64Encode(randomValues);
+};
+
+// Code Verifier를 SHA-256로 해싱, Code Challenge 생성
+const generateCodeChallenge = async (codeVerifier: string) => {
+    const codeChallengeBytes = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(codeVerifier)
+    );
+    return base64Encode(codeChallengeBytes);
+};
+
+// CSRF 방지를 위한 state 생성
+const generateState = () => {
+    const randomValues = new Uint8Array(32);
+    crypto.getRandomValues(randomValues);
+    return base64Encode(randomValues);
+};
+```
+
+#### 2. 인가 코드 요청
+
+카카오 로그인 페이지로 리다이렉션 하는 함수를 작성했다.
+
+기존의 localStorage 저장 방식에서 sessionStorage로 변경해 보안을 높였다.
+sessionStorage를 사용하면 브라우저가 종료 시 데이터가 삭제되기 때문에, 보안성을 조금 더 높일 수 있다.
+
+```tsx
+const handleRedirectToKakao = async () => {
+    const codeVerifier = generateCodeVerifier();
+    sessionStorage.setItem("code_verifier", codeVerifier);
+
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    const state = generateState();
+    sessionStorage.setItem("state", state);
+
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${KAKAO_CLIENT_ID}&redirect_uri=${KAKAO_REDIRECT_URI}&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}`;
+
+    window.location.href = kakaoAuthUrl;
+};
+```
+
+인가 서버로 보내는 정보는 아래와 같다.
+
+```text
+https://kauth.kakao.com/oauth/authorize?response_type=code
+    &client_id=eeea6d87ff0261c7795936bbea225e5c
+    &redirect_uri=http://localhost:3000/oauth/kakao/authorize/fallback
+    &code_challenge=0WR5CAnhp9CZf4iEMNa4jKrvPH3UsQlrEBwjt3z4VcA
+    &code_challenge_method=S256
+    &state=Fuaybqt36G2mTTdFY4a9SiixCBZ_uuC5pyW80KXHPQo
+```
+
+:::warning 트러블 슈팅 : PKCE validation failed. transformed code verifier does not match code challenge.
+
+인가 코드 요청 과정에서 `generateCodeChallenge(codeVerifier)` 사용 시, `await`을 누락해 `code_challenge`가 올바르게 생성되지 않아 카카오 서버에서 400 오류가 발생했다.
+당연하게도 `generateCodeChallenge(codeVerifier)`는 해싱하는 **비동기 함수**이기 때문에, 해싱이 완료된 다음에 값을 전달해야 한다.
+
+```tsx
+const codeChallenge = await generateCodeChallenge(codeVerifier);
+```
+
+```json
+{
+    "error": "invalid_grant",
+    "error_description": "PKCE validation failed. transformed code verifier does not match code challenge.",
+    "error_code": "KOE313"
+}
+```
+
+![400](./bad_request.png)
+
+:::
+
+#### 3. 인가 코드 처리 - Callback 페이지
+
+로그인 후 리다이렉션 된 페이지에서 인가 코드(`code`)와 `state`를 받는다.
+`state`는 기존에 저장된 `originState`와 비교하고, `codeVerifier`도 sessionStorage에서 가져온다.
+
+```tsx
+const urlParams = new URLSearchParams(window.location.search);
+const code = urlParams.get("code");
+const state = urlParams.get("state");
+const originState = sessionStorage.getItem("state");
+const codeVerifier = sessionStorage.getItem("code_verifier");
+```
+
+```tsx
+if (!code) {
+    setErrorMessage("인증 코드가 없습니다.");
+    navigate("/login");
+    return;
+}
+
+if (!state || state !== originState) {
+    setErrorMessage("state가 없습니다.");
+    navigate("/login");
+    return;
+}
+
+if (!codeVerifier) {
+    setErrorMessage("code_verifier가 없습니다.");
+    navigate("/login");
+    return;
+}
+```
+
+#### 4. Access Token 요청
+
+위 데이터를 검증한 후, 받은 인가 코드와 기존에 로그인 페이지에서 생성했던 `codeVerifier`를 토큰 서버로 보내 Access Token을 요청한다.
+토큰 서버는 `code_verifier`를 `code_challenge_method`로 검증한 후. 이후 `access_token`과 `id_token`을 반환한다.
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="payload" label="Token Payload" default>
+    <img src="https://res.cloudinary.com/dsapqefbg/image/upload/v1739694957/token_payload_w3qwem.png" alt="payload" />
+  </TabItem>
+  <TabItem value="response" label="Token Response">
+      <img src="https://res.cloudinary.com/dsapqefbg/image/upload/v1739694953/token_response_zm6zo8.png" alt="response" />
+  </TabItem>
+</Tabs>
+
+```tsx
+const requestToken = async () => {
+    try {
+        const data = {
+            grant_type: "authorization_code",
+            client_id: KAKAO_CLIENT_ID,
+            redirect_uri: KAKAO_REDIRECT_URI,
+            code,
+            code_verifier: codeVerifier,
+        };
+
+        const params = new URLSearchParams(data);
+
+        const response = await axios.post(
+            "https://kauth.kakao.com/oauth/token",
+            params,
+            {
+                headers: {
+                    "Content-Type":
+                        "application/x-www-form-urlencoded;charset=utf-8",
+                },
+            }
+        );
+
+        const { access_token, id_token } = response.data;
+
+        if (!response.data.access_token) {
+            throw new Error("토큰이 유효하지 않습니다.");
+        }
+
+        setTokens(access_token);
+
+        mutate({ accessToken: access_token, idToken: id_token });
+    } catch {
+        setErrorMessage("로그인 중 오류가 발생했습니다.");
+        navigate("/login");
+    }
+};
+```
+
+#### 5. 백엔드에서 id_token 검증
+
+백엔드는 프론트에서 보낸 `id_token`을 OIDC로 검증하고, JWT 디코딩을 통해 필요한 유저 정보를 프론트로 보내주게 된다.
 
 :::note 참고
 
