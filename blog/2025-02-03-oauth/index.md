@@ -497,16 +497,16 @@ export const userApi = {
 grant_type: authorization_code
 client_id: eeeclientidexamplea6d87feeef0261
 redirect_uri: http://localhost:3000/oauth/kakao/authorize/fallback
-code: authCodeExample_n0U0HTvQ_authCodeExample_h1QIVr_authCodeExample_YStp2f9245YStp2f924YSt
-code_verifier: codeVerifierExample2i9zkdddCLivq9OjtcriTdd8
+code: HucLFZ8ovAD5b4iXxDqX98DseaEsWXdmZESzVeMxLgViWQjPCF3S8wAAAAQKKiWPAAABlQ5fwidtZc76WqiBKA
+code_verifier: pe_eSZ2QQXKlfmJG7Rp0g4uAp4iC8a6ZnItUgZrXdes
 ```
 
 ```json title="response - https://kauth.kakao.com/oauth/token"
 {
-    "access_token": "AAaccessTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMBAdDMFVA",
+    "access_token": "g2d3n6O7O9ph6wbyHdgYl6bINw7xl1VqAAAAAQo8JCAAAAGVDAAAAAL4plhSrbcM",
     "token_type": "bearer",
-    "refresh_token": "AArefreshTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVA",
-    "id_token": "AAidTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVAAAidTokenTokenWERWFDASDF.assd2asde3efa4sdfas5L4pSMFDMdDMFVAAAidTokenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVAAAidT.okenTokenWERWFDASDFassd2asde3efa4sdfas5L4pSMFDMdDMFVA",
+    "refresh_token": "9k0Dq-IlLwE8mLhcZzxeNtxvl69AW-cgAAAAAgo9c04AAAGVDl_AAAAAplhSrbcM",
+    "id_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2VtYWlsIjoibWFpbkBtYWlsLmNvbSIsInByb2ZpbGVfaW1hZ2UiOiIxNTE2MjM5MDIyIiwicHJvZmlsZV9uaWNrbmFtZSI6MTUxNjIzOTAyMn0.lpv4TzPEPUfRqqNQM_LSVbv4_tIQ03zKpKxrYm9tVZw",
     "expires_in": 21599,
     "scope": "account_email profile_image profile_nickname",
     "refresh_token_expires_in": 5183999
@@ -589,7 +589,7 @@ sequenceDiagram
 
 #### 1. Code Verifier & Code Challenge & State 생성
 
-먼저 code_verifier, code_challenge를 생성하는 유틸 함수를 만든다.
+먼저 `code_verifier, code_challenge를 생성하는 유틸 함수를 만든다.
 여기에서는 CSRF 방지를 위한 state도 함께 생성했다.
 
 ```tsx title="/src/pages/auth/login/utils/generator.ts"
@@ -653,9 +653,9 @@ const handleRedirectToKakao = async () => {
 https://kauth.kakao.com/oauth/authorize?response_type=code
     &client_id=eeerandomclientid1234sample0o0o0
     &redirect_uri=http://localhost:3000/oauth/kakao/authorize/fallback
-    &code_challenge=0WR5CAnhp9CZf4iEMNa4jKrvPH3UsQlrEBwjt3z4VcA
+    &code_challenge=FZDZto8eBUgrNTrKDB0CxUqFYdIfKqMcnSrbrgNNCbc
     &code_challenge_method=S256
-    &state=Fuaybqt36G2mTTdFY4a9SiixCBZ_uuC5pyW80KXHPQo
+    &state=gEfRamABWs0tIHHs
 ```
 
 :::warning 트러블 슈팅 : PKCE validation failed. transformed code verifier does not match code challenge.
