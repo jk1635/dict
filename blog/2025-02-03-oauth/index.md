@@ -481,14 +481,14 @@ export const userApi = {
 
 ### 구상 3 적용
 
-구상 1로 구현해 배포를 한 후, OAuth 표준에 맞는 구상 3을 적용하기 위한 작업을 시작했다. 구상 1과 달리 수정해야할 부분이 많아서 시간이 조금 걸렸다.
+구상 1로 구현해 배포한 후, OAuth 표준에 맞는 구상 3을 적용하기 위한 작업을 시작했다. 구상 1과 달리 수정해야 할 부분이 많아서 시간이 조금 걸렸다.
 
 ![카카오 PKCE Dev Talk](./kakao_dev_talk.png)
 
 먼저 문제는 카카오 개발문서가 PKCE에 대한 가이드가 부족한 상태여서, 위
 [카카오 PKCE Dev Talk](https://devtalk.kakao.com/t/code-challenge-code-verifier/136785) 내용을 참고해 [구글 로그인](https://developers.google.com/identity/protocols/oauth2/native-app) 문서를 기반으로 구현하였다.
 
-초기 설계 단계였다면 원하는 방향으로 편하게 구현할 수 있었겠지만, 이번 경우는 기존의 코드를 유지하면서 보안적으로 최선의 방법을 찾아야 했다.
+초기 설계 단계였다면 원하는 방향으로 편하게 구현할 수 있었겠지만, 이번 경우는 기존의 코드를 유지하면서 보안적 측면에서 최선의 방법을 찾아야 했다.
 개선 이전의 상태는 프론트에서 POST를 통해 인가 코드를 백엔드로 보내고, 백엔드는 이를 처리해 `access_token`과 `user_id`를 프론트로 반환하는 구조였다.
 
 하지만 PKCE를 도입하면서 `access_token`이 프론트로 직접 들어오게 됐고, 동시에 `id_token`도 프론트로 직접 들어오는 상황이 되었다.
@@ -517,7 +517,7 @@ code_verifier: pe_eSZ2QQXKlfmJG7Rp0g4uAp4iC8a6ZnItUgZrXdes
 
 처음에는 `id_token`이 뭔지 몰랐고, 백엔드에서 필요하다고 하니 `access_token`과 함께 보내려고 했다. 하지만 찾아보니 JWT(JSON Web Token) 형식의 `id_token`을 디코딩하면 프론트에서도 사용자 정보를 확인할 수 있다는 것을 알게 됐다.
 그렇다면 굳이 백엔드에서 처리하지 않고, 프론트에서 바로 사용자 정보를 보여줄 수 있다는 건데.
-과연 이 개인 정보를 이렇게 프론트에서 관리하는게 맞을까? 싶었다.
+과연 이 개인 정보를 이렇게 프론트에서 관리하는 게 맞을까? 싶었다.
 
 그렇게 더 나은 방법을 찾기 위해 카카오 로그인 문서와 구글 로그인 문서를 뒤지기 시작했고, OIDC(OpenID Connect)라는 것을 알게 되었다.
 
@@ -533,7 +533,7 @@ OIDC를 발견하고, 백엔드에서 `id_token`의 서명을 검증한 후, 검
 최종적으로 프론트에서 `access_token`과 `id_token`을 백엔드로 보내 검증하는 방식을 채택했다.
 
 프론트에서 `id_token`을 저장하거나 직접 관리하지 않기 때문에 XSS 공격에 대한 위험이 줄어든다.
-또, 백엔드가 카카오의 공개 키로 서명을 검증해서, 변조 토큰 사용을 방지할 수 있다.
+또, 백엔드가 카카오의 공개키로 서명을 검증해서, 변조 토큰 사용을 방지할 수 있다.
 그리고 프론트는 검증된 정보만 사용하기 때문에, 사용자 정보를 안전하게 처리하게 된다.
 
 개선된 인증 프로세스는 아래와 같다.
@@ -569,19 +569,21 @@ sequenceDiagram
 <br/>
 
 <details open>
-<summary>용어 설명</summary>
-- `code_verifier` : 최소 43 ~ 최대 128 글자 수의 Cryptographic Random String이다. `[A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~"` 문자들로만 구성된다.
-- `code_challenge` : SHA256 알고리즘으로 Code Verifier를 해싱한 후 Base64로 인코딩을 한 값이다.
-- `code_challenge_method` : code_challenge를 해싱하는데 사용한 메서드이다.
-- `state` : Client가 인증 요청 시 생성하여 인증 서버에 전달하는 임의의 값으로, CSRF 공격을 방지하고 인증 요청의 상태를 유지하는 역할을 한다.
-:::info `state`와 `code_challenge` 비교
+    <summary>용어 설명</summary>
 
-| 매개변수                       | 정의                                                            | 목적                |
-| ------------------------------ | --------------------------------------------------------------- | ------------------- |
-| state                          | Client가 인증 서버에 보내는 인증 요청에 포함된 임의로 생성된 값 | CSRF 공격 방지      |
-| code_challenge (code_verifier) | code_verifier를 해싱하거나 변환하여 생성된 값                   | 인가 코드 탈취 방지 |
+        - `code_verifier` : 최소 43 ~ 최대 128 글자 수의 Cryptographic Random String이다. [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~" 문자들로만 구성된다.
+        - `code_challenge` : SHA-256 알고리즘으로 Code Verifier를 해싱한 후 Base64로 인코딩을 한 값이다.
+        - `code_challenge_method` : `code_challenge`를 해싱하는 데 사용한 메서드이다.
+        - `state` : Client가 인증 요청 시 생성하여 인증 서버에 전달하는 임의의 값으로, CSRF 공격을 방지하고 인증 요청의 상태를 유지하는 역할을 한다.
 
-:::
+        :::info `state`와 `code_challenge` 비교
+
+        | 매개변수                           | 정의                                                            | 목적                |
+        | ---------------------------------- | --------------------------------------------------------------- | ------------------- |
+        | `state`                              | Client가 인증 서버에 보내는 인증 요청에 포함된 임의로 생성된 값 | CSRF 공격 방지      |
+        | `code_challenge` (`code_verifier`) | `code_verifier`를 해싱하거나 변환하여 생성된 값                 | 인가 코드 탈취 방지 |
+
+        :::
 
 </details>
 
@@ -589,7 +591,7 @@ sequenceDiagram
 
 #### 1. Code Verifier & Code Challenge & State 생성
 
-먼저 `code_verifier, code_challenge를 생성하는 유틸 함수를 만든다.
+먼저 `code_verifier`, `code_challenge`를 생성하는 유틸 함수를 만든다.
 여기에서는 CSRF 방지를 위한 state도 함께 생성했다.
 
 ```tsx title="/src/pages/auth/login/utils/generator.ts"
@@ -628,8 +630,8 @@ const generateState = () => {
 
 카카오 로그인 페이지로 리다이렉션 하는 함수를 작성했다.
 
-기존의 localStorage 저장 방식에서 sessionStorage로 변경해 보안을 높였다.
-sessionStorage를 사용하면 브라우저가 종료 시 데이터가 삭제되기 때문에, 보안성을 조금 더 높일 수 있다.
+기존의 `localStorage` 저장 방식에서 `sessionStorage`로 변경해 보안을 높였다.
+`sessionStorage`를 사용하면 브라우저가 종료 시 데이터가 삭제되기 때문에, 보안성을 조금 더 높일 수 있다.
 
 ```tsx title="/src/pages/auth/login/index.tsx"
 const handleRedirectToKakao = async () => {
@@ -685,14 +687,14 @@ const codeChallenge = await generateCodeChallenge(codeVerifier);
 
 -   해싱(Hashing)은 해시 함수에 문자열 입력값을 넣어서 특정한 값으로 추출하는 것을 의미한다.
 -   Plain Text → hash Function → hashed Text
-    -   반대 방향으로 Plain Text로 만드는건 안된다.
+    -   반대 방향으로 Plain Text로 만드는 건 안 된다.
 
 :::
 
 #### 3. 인가 코드 처리 - Callback 페이지
 
 로그인 후 리다이렉션 된 페이지에서 인가 코드(`code`)와 `state`를 받는다.
-`state`는 기존에 저장된 `originState`와 비교하고, `codeVerifier`도 sessionStorage에서 가져온다.
+`state`는 기존에 저장된 `originState`와 비교하고, `codeVerifier`도 `sessionStorage`에서 가져온다.
 
 ```tsx title='/src/pages/auth/callback/index.tsx'
 const urlParams = new URLSearchParams(window.location.search);
