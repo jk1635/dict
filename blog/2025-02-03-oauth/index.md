@@ -325,8 +325,10 @@ sequenceDiagram
 ```tsx title="/src/pages/auth/LoginPage.tsx"
 const KAKAO_CLIENT_ID = "eeerandomclientid1234sample0o0o0";
 // 1. 서버에서 직접 인가 코드 처리 후 accessToken, refreshToken을 URL로 반환
+// highlight-start
 const KAKAO_REDIRECT_URI =
     "http://api.haeyum.com/oauth/kakao/authorize/fallback";
+// highlight-end
 
 const LoginPage = () => {
     const handleRedirectToKakao = () => {
@@ -352,10 +354,11 @@ const LoginPage = () => {
 ```tsx title="/src/pages/auth/CallbackPage.tsx"
 useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-
     // 2. URL에서 accessToken, refreshToken을 받아 저장 -> URL에 Token 노출
+    // highlight-start
     const accessToken = urlParams.get("accessToken");
     const refreshToken = urlParams.get("refreshToken");
+    // highlight-end
     const userId = urlParams.get("socialSub");
 
     if (accessToken && refreshToken && userId) {
@@ -401,8 +404,10 @@ sequenceDiagram
 ```tsx title="/src/pages/auth/LoginPage.tsx"
 const KAKAO_CLIENT_ID = "eeerandomclientid1234sample0o0o0";
 // 1. 프론트엔드에서 인가 코드 직접 처리
+// highlight-start
 const KAKAO_REDIRECT_URI =
     "https://www.haeyum.kr/oauth/kakao/authorize/fallback";
+// highlight-end
 
 const LoginPage = () => {
     const handleRedirectToKakao = () => {
@@ -429,6 +434,7 @@ const LoginPage = () => {
 useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     // 2. URL에서 인가 코드(code) 받아와 서버에 토큰 요청
+    // highlight-next-line
     const code = urlParams.get("code");
 
     if (!code) {
@@ -446,6 +452,7 @@ useEffect(() => {
             }
 
             // 4. 기존 방식과 동일하지만, 토큰을 서버에서 받아와 프론트에 저장
+            // highlight-next-line
             setTokens(accessToken, refreshToken, userId);
             navigate("/");
         },
@@ -461,10 +468,12 @@ useEffect(() => {
 // 3. POST body에 인가 코드(code) 전달 -> HTTPS 사용시 body가 암호화되어 code 노출 위험 감소
 export const userApi = {
     postAuthCode: async (code: string) => {
+        // highlight-start
         const response = await privateApiInstance.post<TokenResponse>(
             "/oauth/kakao/login",
             { code }
         );
+        // highlight-end
         return response.data;
     },
 };
@@ -561,9 +570,9 @@ sequenceDiagram
 
 <details open>
 <summary>용어 설명</summary>
-- `code_verifier` : 최소 43 ~ 최대 128 글자수의 Cryptographic Random String이다. [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~" 문자들로만 구성된다.([출처](https://developers.google.com/identity/protocols/oauth2/native-app))
-- `code_challenge` : SHA256 알고리즘으로 Code Verifier를 해싱한 후 Base64로 인코딩을 한 값.
-- `code_challenge_method` : code_challenge를 해싱하는데 사용한 메서드
+- `code_verifier` : 최소 43 ~ 최대 128 글자 수의 Cryptographic Random String이다. `[A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~"` 문자들로만 구성된다.
+- `code_challenge` : SHA256 알고리즘으로 Code Verifier를 해싱한 후 Base64로 인코딩을 한 값이다.
+- `code_challenge_method` : code_challenge를 해싱하는데 사용한 메서드이다.
 - `state` : Client가 인증 요청 시 생성하여 인증 서버에 전달하는 임의의 값으로, CSRF 공격을 방지하고 인증 요청의 상태를 유지하는 역할을 한다.
 :::info `state`와 `code_challenge` 비교
 
@@ -631,6 +640,7 @@ const handleRedirectToKakao = async () => {
     const state = generateState();
     sessionStorage.setItem("state", state);
 
+    // highlight-next-line
     const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${KAKAO_CLIENT_ID}&redirect_uri=${KAKAO_REDIRECT_URI}&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}`;
 
     window.location.href = kakaoAuthUrl;
@@ -639,9 +649,9 @@ const handleRedirectToKakao = async () => {
 
 인가 서버로 보내는 정보는 아래와 같다.
 
-```text title="KakaoAuthUrl"
+```text title="kakaoAuthUrl"
 https://kauth.kakao.com/oauth/authorize?response_type=code
-    &client_id=eeea6d87ff0261c7795936bbea225e5c
+    &client_id=eeerandomclientid1234sample0o0o0
     &redirect_uri=http://localhost:3000/oauth/kakao/authorize/fallback
     &code_challenge=0WR5CAnhp9CZf4iEMNa4jKrvPH3UsQlrEBwjt3z4VcA
     &code_challenge_method=S256
@@ -666,6 +676,16 @@ const codeChallenge = await generateCodeChallenge(codeVerifier);
 ```
 
 ![400](./bad_request.png)
+
+:::
+
+:::tip 해싱(Hashing)이란?
+
+![hash](./hash.png)
+
+-   해싱(Hashing)은 해시 함수에 문자열 입력값을 넣어서 특정한 값으로 추출하는 것을 의미한다.
+-   Plain Text → hash Function → hashed Text
+    -   반대 방향으로 Plain Text로 만드는건 안된다.
 
 :::
 
@@ -780,5 +800,7 @@ const requestToken = async () => {
 -   [The Backend for Frontend Pattern](https://auth0.com/blog/the-backend-for-frontend-pattern-bff/)
 -   [PKCE에 BFF를 적용](https://docs.abblix.com/docs/openid-connect-flows-explained-simply-from-implicit-flows-to-authorization-code-flows-with-pkce-and-bff#authorization-code-flow-with-pkce-and-bff)
 -   [BFF란](https://dev-bak.tistory.com/58)
+-   [해싱(Hashing)이란?](https://velog.io/@bbaekddo/cs-3)
+-   [OAuth 2.0 for Mobile & Desktop Apps](https://developers.google.com/identity/protocols/oauth2/native-app)
 
 :::
