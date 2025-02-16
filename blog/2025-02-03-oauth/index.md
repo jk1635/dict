@@ -594,9 +594,9 @@ sequenceDiagram
     Frontend->>Backend: access_token 전송, id_token 검증 요청
     Backend->>OAuthServer: id_token 서명 검증
     OAuthServer-->>Backend: 검증 성공
-    Backend-->>Frontend: user 데이터 반환
+    Backend-->>Frontend: user 데이터 추출 후 반환
 
-    Frontend->>Frontend: user 데이터 반환
+    Frontend->>Frontend: user_id 저장
     Frontend->>User: 로그인 완료 후 메인 페이지로 이동
 
 ```
