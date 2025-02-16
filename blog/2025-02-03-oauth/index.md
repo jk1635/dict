@@ -289,7 +289,7 @@ sequenceDiagram
 | **Access Token 저장**  | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 프론트엔드          |
 | **Refresh Token 저장** | 프론트엔드                      | 프론트엔드          | 백엔드 쿠키(HttpOnly, Secure) | 저장 안함           |
 | **CSRF 방어**          | 불가능                          | 불가능              | 가능                          | `state` 사용시 가능 |
-| **Token 탈취 위협**    | 매우 높음 (URL 노출)            | 높음 (프론트 저장)  | 낮음 (백엔드 보안)            | 중간                |
+| **Token 탈취 위험**    | 매우 높음 (URL 노출)            | 높음 (프론트 저장)  | 낮음 (백엔드 보안)            | 중간                |
 | **FE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 방식 적용                | PKCE 적용           |
 | **BE 변경 요구 사항**  | -                               | 토큰 전달 방식 변경 | 쿠키 처리                     | PKCE 처리           |
 | **OAuth 표준 준수**    | 위반                            | 부분                | 부분                          | 준수                |
@@ -479,39 +479,74 @@ export const userApi = {
 };
 ```
 
+OAuth 인증 과정에서 URL에 토큰이 노출되는 상황은 구상 1을 적용해 막을 수 있었다.
+하지만 여전히 인가 코드 탈취 가능성이 높고 CSRF 공격에도 취약한 상태였다.
+이를 보완하기 위해 PKCE를 적용하는 구상 3을 도입하기로 했다.
+
 ### 구상 3 적용
 
-구상 1로 구현해 배포한 후, OAuth 표준에 맞는 구상 3을 적용하기 위한 작업을 시작했다. 구상 1과 달리 수정해야 할 부분이 많아서 시간이 조금 걸렸다.
+구상 1로 구현해 배포한 후, OAuth 표준에 맞는 PKCE를 적용하기 위한 작업에 들어갔다. PKCE인 구상 3을 적용하려면 프론트엔드와 백엔드 모두 수정해야 했다.
+
+#### PKCE 가이드 부족 문제
+
+PKCE 적용 과정에서 가장 큰 어려움은 PKCE 관련 가이드가 부족하다는 점이었다.
 
 ![카카오 PKCE Dev Talk](./kakao_dev_talk.png)
 
-먼저 문제는 카카오 개발문서가 PKCE에 대한 가이드가 부족한 상태여서, 위
-[카카오 PKCE Dev Talk](https://devtalk.kakao.com/t/code-challenge-code-verifier/136785) 내용을 참고해 [구글 로그인](https://developers.google.com/identity/protocols/oauth2/native-app) 문서를 기반으로 구현하였다.
+카카오 개발 문서에도 관련 내용에 대한 친절한 가이드는 없었고, 위
+[카카오 PKCE Dev Talk](https://devtalk.kakao.com/t/code-challenge-code-verifier/136785) 내용을 참고해 [구글 로그인 문서](https://developers.google.com/identity/protocols/oauth2/native-app)를 기반으로 구현하였다.
 
-초기 설계 단계였다면 원하는 방향으로 편하게 구현할 수 있었겠지만, 이번 경우는 기존의 코드를 유지하면서 보안적 측면에서 최선의 방법을 찾아야 했다.
+초기 설계 단계였다면 원하는 방향으로 쉽게 설계하고 구현할 수 있었겠지만, 이번 경우는 기존의 코드 구조를 유지하면서 동시에 보안적 측면에서 최선의 방법을 찾아야 했다.
 개선 이전의 상태는 프론트에서 POST를 통해 인가 코드를 백엔드로 보내고, 백엔드는 이를 처리해 `access_token`과 `user_id`를 프론트로 반환하는 구조였다.
 
-하지만 PKCE를 도입하면서 `access_token`이 프론트로 직접 들어오게 됐고, 동시에 `id_token`도 프론트로 직접 들어오는 상황이 되었다.
+-   기존 구현된 방식 (구상 1 적용 상태)
 
-```text title="payload - https://kauth.kakao.com/oauth/token"
-grant_type: authorization_code
-client_id: eeeclientidexamplea6d87feeef0261
-redirect_uri: http://localhost:3000/oauth/kakao/authorize/fallback
-code: HucLFZ8ovAD5b4iXxDqX98DseaEsWXdmZESzVeMxLgViWQjPCF3S8wAAAAQKKiWPAAABlQ5fwidtZc76WqiBKA
-code_verifier: pe_eSZ2QQXKlfmJG7Rp0g4uAp4iC8a6ZnItUgZrXdes
-```
+1. 프론트엔드에서 OAuth 인가 코드(`code`)를 발급받아, 이를 POST 요청으로 백엔드에 전달
+2. 백엔드에서 해당 코드를 이용해 `access_token`과 `user_id`를 발급 후 프론트엔드로 반환
 
-```json title="response - https://kauth.kakao.com/oauth/token"
-{
-    "access_token": "g2d3n6O7O9ph6wbyHdgYl6bINw7xl1VqAAAAAQo8JCAAAAGVDAAAAAL4plhSrbcM",
-    "token_type": "bearer",
-    "refresh_token": "9k0Dq-IlLwE8mLhcZzxeNtxvl69AW-cgAAAAAgo9c04AAAGVDl_AAAAAplhSrbcM",
-    "id_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2VtYWlsIjoibWFpbkBtYWlsLmNvbSIsInByb2ZpbGVfaW1hZ2UiOiIxNTE2MjM5MDIyIiwicHJvZmlsZV9uaWNrbmFtZSI6MTUxNjIzOTAyMn0.lpv4TzPEPUfRqqNQM_LSVbv4_tIQ03zKpKxrYm9tVZw",
-    "expires_in": 21599,
-    "scope": "account_email profile_image profile_nickname",
-    "refresh_token_expires_in": 5183999
-}
-```
+하지만 PKCE를 도입하면서 `access_token`이 프론트로 직접 들어오게 되었고, 동시에 `id_token`도 프론트로 직접 들어오는 상황이 되었다.
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="payload" label="Token Payload">
+
+    ```text title="payload - https://kauth.kakao.com/oauth/token"
+    grant_type: authorization_code
+    client_id: eeeclientidexamplea6d87feeef0261
+    redirect_uri: http://localhost:3000/oauth/kakao/authorize/fallback
+    code: HucLFZ8ovAD5b4iXxDqX98DseaEsWXdmZESzVeMxLgViWQjPCF3S8wAAAAQKKiWPAAABlQ5fwidtZc76WqiBKA
+    code_verifier: pe_eSZ2QQXKlfmJG7Rp0g4uAp4iC8a6ZnItUgZrXdes
+    ```
+
+  </TabItem>
+  <TabItem value="response" label="Token Response" default>
+
+    ```json title="response - https://kauth.kakao.com/oauth/token"
+    {
+        // highlight-next-line
+        "access_token": "g2d3n6O7O9ph6wbyHdgYl6bINw7xl1VqAAAAAQo8JCAAAAGVDAAAAAL4plhSrbcM",
+        "token_type": "bearer",
+        "refresh_token": "9k0Dq-IlLwE8mLhcZzxeNtxvl69AW-cgAAAAAgo9c04AAAGVDl_AAAAAplhSrbcM",
+          // highlight-next-line
+        "id_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2VtYWlsIjoibWFpbkBtYWlsLmNvbSIsInByb2ZpbGVfaW1hZ2UiOiIxNTE2MjM5MDIyIiwicHJvZmlsZV9uaWNrbmFtZSI6MTUxNjIzOTAyMn0.lpv4TzPEPUfRqqNQM_LSVbv4_tIQ03zKpKxrYm9tVZw",
+        "expires_in": 21599,
+        "scope": "account_email profile_image profile_nickname",
+        "refresh_token_expires_in": 5183999
+    }
+    ```
+
+  </TabItem>
+</Tabs>
+
+<details>
+    <summary>실제 예시 이미지</summary>
+
+    ![token_payload](./token_payload.png)
+    ![token_response](./token_response.png)
+
+</details>
 
 ### id_token을 어떻게 처리할 것인가
 
@@ -519,13 +554,13 @@ code_verifier: pe_eSZ2QQXKlfmJG7Rp0g4uAp4iC8a6ZnItUgZrXdes
 그렇다면 굳이 백엔드에서 처리하지 않고, 프론트에서 바로 사용자 정보를 보여줄 수 있다는 건데.
 과연 이 개인 정보를 이렇게 프론트에서 관리하는 게 맞을까? 싶었다.
 
-그렇게 더 나은 방법을 찾기 위해 카카오 로그인 문서와 구글 로그인 문서를 뒤지기 시작했고, OIDC(OpenID Connect)라는 것을 알게 되었다.
+그렇게 더 나은 방법을 찾기 위해 카카오 로그인 문서와 구글 로그인 문서를 샅샅이 뒤지기 시작했고, OIDC(OpenID Connect)라는 것을 알게 되었다. ([kakao developers - OIDC](https://.kakao.com/docs/latest/ko/kakaologin/rest-api#oidc))
 
 ### 그럼 OIDC를 활용하자
 
 OIDC는 OpenID Connect의 약자로 OAuth 2.0 사양 프레임워크를 기반으로 하는 상호 운용 가능한 인증 프로토콜이다. OIDC의 핵심 기능 중 하나가 `id_token`의 유효성 검증이다.
 
-OIDC를 발견하고, 백엔드에서 `id_token`의 서명을 검증한 후, 검증된 사용자 정보만 프론트에 반환하는 방법을 생각해 볼 수 있었다.
+OIDC의 개념을 발견하고, 백엔드에서 `id_token`의 서명을 검증한 후, 검증된 사용자 정보만 프론트에 반환하는 방법을 떠올릴 수 있었다.
 이 방법을 사용하면 프론트에서 `id_token`를 직접 다루지 않을 수 있고, 또 검증된 정보만 사용하게 되기 때문에 보안을 강화할 수 있을 것이다.
 
 ### 최종 선택
@@ -592,7 +627,7 @@ sequenceDiagram
 #### 1. Code Verifier & Code Challenge & State 생성
 
 먼저 `code_verifier`, `code_challenge`를 생성하는 유틸 함수를 만든다.
-여기에서는 CSRF 방지를 위한 state도 함께 생성했다.
+여기에서는 CSRF 방지를 위한 `state`도 함께 생성했다.
 
 ```tsx title="/src/pages/auth/login/utils/generator.ts"
 const base64Encode = (arrayBuffer: ArrayBuffer) => {
@@ -649,7 +684,7 @@ const handleRedirectToKakao = async () => {
 };
 ```
 
-인가 서버로 보내는 정보는 아래와 같다.
+인가 서버로 보내는 정보는 아래와 같다. Scope는 카카오 개발자 콘솔에 미리 등록했기 때문에, 여기에 작성하진 않았다.
 
 ```text title="kakaoAuthUrl"
 https://kauth.kakao.com/oauth/authorize?response_type=code
@@ -729,18 +764,6 @@ if (!codeVerifier) {
 위 데이터를 검증한 후, 받은 인가 코드와 기존에 로그인 페이지에서 생성했던 `codeVerifier`를 토큰 서버로 보내 Access Token을 요청한다.
 토큰 서버는 `code_verifier`를 `code_challenge_method`로 확인하고, 이후 `access_token`과 `id_token`을 반환한다.
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
-<Tabs>
-  <TabItem value="payload" label="Token Payload" default>
-    <img src="https://res.cloudinary.com/dsapqefbg/image/upload/v1739694957/token_payload_w3qwem.png" alt="payload" />
-  </TabItem>
-  <TabItem value="response" label="Token Response">
-      <img src="https://res.cloudinary.com/dsapqefbg/image/upload/v1739694953/token_response_zm6zo8.png" alt="response" />
-  </TabItem>
-</Tabs>
-
 ```tsx title='/src/pages/auth/callback/index.tsx'
 const requestToken = async () => {
     try {
@@ -783,6 +806,9 @@ const requestToken = async () => {
 #### 5. 백엔드에서 id_token 검증
 
 백엔드는 프론트에서 보낸 `id_token`을 OIDC로 검증하고, JWT 디코딩을 통해 필요한 유저 정보를 프론트로 보내주게 된다.
+
+<br/>
+<br/>
 
 :::note 참고
 
