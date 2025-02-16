@@ -548,7 +548,7 @@ sequenceDiagram
 
     Frontend->>Frontend: access_token 저장
     Frontend->>Backend: access_token 전송, id_token 검증 요청
-    Backend->>OAuthServer: access_token 서명 검증
+    Backend->>OAuthServer: id_token 서명 검증
     OAuthServer-->>Backend: 검증 성공
     Backend-->>Frontend: user 데이터 반환
 
