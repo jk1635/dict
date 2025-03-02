@@ -70,26 +70,29 @@ OAuth는 이러한 문제를 해결하기 위해 등장한 표준화된 인증 �
 
 ## Authorization Code Flow
 
-![oauth sequence diagram](./oauth_sequence_diagram.png)
+![oauth code flow](./diagram_oauth_code_flow.png)
 
 <!-- ```mermaid
+
 sequenceDiagram
-participant User as 사용자 (Resource Owner)
-participant Client as 내 애플리케이션 (Client)
-participant AuthServer as 인가 서버 (Authorization Server)
-participant ResourceServer as 리소스 서버 (Resource Server)
+    autoNumber
+    participant User as 사용자 (Resource Owner)
+    participant Client as 내 애플리케이션 (Client)
+    participant AuthServer as 인가 서버 (Authorization Server)
+    participant ResourceServer as 리소스 서버 (Resource Server)
 
-User->>Client: 로그인 버튼 클릭
-Client->>AuthServer: client_id, redirect_uri 포함하여 인증 요청
-AuthServer->>User: 로그인 및 권한 부여 요청
-User->>AuthServer: 로그인 및 정보 제공 동의
-AuthServer->>Client: 인가 코드 발급 (redirect_uri로 리다이렉트)
+    User->>Client: 로그인 버튼 클릭
+    Client->>AuthServer: client_id, redirect_uri 포함하여 인증 요청
+    AuthServer->>User: 로그인 및 권한 부여 요청
+    User->>AuthServer: 로그인 및 정보 제공 동의
+    AuthServer->>Client: 인가 코드 발급 (redirect_uri로 리다이렉트)
 
-Client->>AuthServer: client_id, client_secret, redirect_uri, 인가 코드 포함하여 Access Token 요청
-AuthServer->>Client: Access Token 및 Refresh Token 발급
+    Client->>AuthServer: client_id, client_secret, redirect_uri, 인가 코드 포함하여 Access Token 요청
+    AuthServer->>Client: Access Token 및 Refresh Token 발급
 
-Client->>ResourceServer: Access Token 포함하여 데이터 요청
-ResourceServer->>Client: 요청된 데이터 반환
+    Client->>ResourceServer: Access Token 포함하여 데이터 요청
+    ResourceServer->>Client: 요청된 데이터 반환
+
 ``` -->
 
 1. 사전 작업
@@ -205,27 +208,30 @@ PKCE가 모바일 앱과 SPA에서 먼저 사용되었기 때문에, 종종 Clie
 
 ### Authorization Code Injection Attack
 
-![authorization code injection](./authorization_code_injection.png)
+![authorization code injection](./diagram_authorization_code_injection.png)
 
 <!-- ```mermaid
+
 sequenceDiagram
+    autoNumber
     participant A as 공격자
     participant U as 피해자
     participant F as 프론트엔드
     participant B as 백엔드
     participant I as 인가 서버 (Authorization Server)
 
-    U->>F: 1. 로그인 요청
-    F->>I: 2. 인가 코드 요청 (정상적인 OAuth 플로우)
-    I->>F: 3. 인가 코드 발급
-    F->>B: 4. 인가 코드 전달 (백엔드로 전송)
+    U->>F: 로그인 요청
+    F->>I: 인가 코드 요청 (정상적인 OAuth 플로우)
+    I->>F: 인가 코드 발급
+    F->>B: 인가 코드 전달 (백엔드로 전송)
 
-    Note over A: 5. 인가 코드 탈취
-    A->>B: 6. 탈취한 인가 코드로 Access Token 요청
-    B->>I: 7. 백엔드가 인가 코드 검증 후 Access Token 요청 (client_secret 포함)
-    I->>B: 8. Access Token 발급 (정상적인 인가 코드라 판단)
-    B->>A: 9. 공격자의 Access Token 획득
-    A->>B: 10. 공격자가 피해자의 계정으로 API 요청 (OAuth 인증 성공)
+    Note over A: 인가 코드 탈취
+    A->>B: 탈취한 인가 코드로 Access Token 요청
+    B->>I: 백엔드가 인가 코드 검증 후 Access Token 요청 (client_secret 포함)
+    I->>B: Access Token 발급 (정상적인 인가 코드라 판단)
+    B->>A: 공격자의 Access Token 획득
+    A->>B: 공격자가 피해자의 계정으로 API 요청 (OAuth 인증 성공)
+
 ``` -->
 
 인가 코드 주입 공격 시나리오
@@ -243,23 +249,26 @@ PKCE의 기본적인 방식은 아래와 같다.
 
 ![pkce rfc7636](./pkce_rfc7636.png)
 
-![pkce](./pkce.png)
+![pkce](./diagram_pkce.png)
 
 <!-- ```mermaid
+
 sequenceDiagram
+    autoNumber
     participant Client as 내 애플리케이션 (Client)
     participant AuthServer as 인가 서버 (Authorization Server)
 
-    Client->>Client: 1. code_verifier 생성
-    Client->>Client: 2. code_verifier를 SHA-256 해싱 → code_challenge 생성
-    Client->>AuthServer: 3. 로그인 요청 (client_id, redirect_uri, code_challenge, code_challenge_method)
-    AuthServer->>AuthServer: 4. client_id, redirect_uri 유효성 검증
-    AuthServer->>Client: 5. 로그인 페이지 표시
-    Client->>AuthServer: 6. 사용자 로그인
-    AuthServer->>Client: 7. redirect_uri로 인가 코드 전달
-    Client->>AuthServer: 8. Access Token 요청 (인가 코드, code_verifier)
-    AuthServer->>AuthServer: 9. code_verifier 해싱 → 로그인 요청시 받은 code_challenge와 일치 여부 확인
-    AuthServer->>Client: 10. Access Token 반환
+    Client->>Client: code_verifier 생성
+    Client->>Client: code_verifier를 SHA-256 해싱 → code_challenge 생성
+    Client->>AuthServer: 로그인 요청 (client_id, redirect_uri, code_challenge, code_challenge_method)
+    AuthServer->>AuthServer: client_id, redirect_uri 유효성 검증
+    AuthServer->>Client: 로그인 페이지 표시
+    Client->>AuthServer: 사용자 로그인
+    AuthServer->>Client: redirect_uri로 인가 코드 전달
+    Client->>AuthServer: Access Token 요청 (인가 코드, code_verifier)
+    AuthServer->>AuthServer: code_verifier 해싱 → 로그인 요청시 받은 code_challenge와 일치 여부 확인
+    AuthServer->>Client: Access Token 반환
+
 ``` -->
 
 구상 3. OAuth 2.0 + PKCE 적용
@@ -298,27 +307,28 @@ sequenceDiagram
 
 <br/>
 
-![url architecture](./url_architecture.png)
+![url architecture](./diagram_origin_url_architecture.png)
 
 <!-- ```mermaid
 
 sequenceDiagram
+    autoNumber
     participant User as 사용자
     participant Frontend as 프론트엔드
     participant AuthServer as 카카오 인가 서버
     participant Backend as 백엔드 (API 서버)
 
-    User ->> Frontend: 1. 로그인 버튼 클릭
-    Frontend ->> AuthServer: 2. OAuth 인증 요청 (client_id, redirect_uri 포함)
-    AuthServer ->> Backend: 3. 인가 코드(code) 포함하여 리다이렉트
+    User ->> Frontend: 로그인 버튼 클릭
+    Frontend ->> AuthServer: OAuth 인증 요청 (client_id, redirect_uri 포함)
+    AuthServer ->> Backend: 인가 코드(code) 포함하여 리다이렉트
 
-    Backend ->> AuthServer: 4. 인가 코드로 Access Token 요청
-    AuthServer ->> Backend: 5. Access Token, Refresh Token 반환
-    Backend ->> Frontend: 6. Access Token, Refresh Token 포함하여 리디렉트
+    Backend ->> AuthServer: 인가 코드로 Access Token 요청
+    AuthServer ->> Backend: Access Token, Refresh Token 반환
+    Backend ->> Frontend: Access Token, Refresh Token 포함하여 리디렉트
 
-    Frontend ->> Frontend: 7. URL에서 Access Token, Refresh Token 추출
-    Frontend ->> Frontend: 8. setTokens(Access Token, Refresh Token, userId) 저장
-    Frontend ->> User: 9. 로그인 완료 (저장된 토큰 사용)
+    Frontend ->> Frontend: URL에서 Access Token, Refresh Token 추출
+    Frontend ->> Frontend: setTokens(Access Token, Refresh Token, userId) 저장
+    Frontend ->> User: 로그인 완료 (저장된 토큰 사용)
 
 ``` -->
 
@@ -379,27 +389,28 @@ useEffect(() => {
 
 <br/>
 
-![no url architecture](./no_url_architecture.png)
+![no url architecture](./diagram_improvement_url_architecture.png)
 
 <!-- ```mermaid
 
 sequenceDiagram
+    autoNumber
     participant User as 사용자
     participant Frontend as 프론트엔드
     participant AuthServer as 카카오 인가 서버
     participant Backend as 백엔드 (API 서버)
 
-    User ->> Frontend: 1. 로그인 버튼 클릭
-    Frontend ->> AuthServer: 2. OAuth 인증 요청 (client_id, redirect_uri 포함)
-    AuthServer ->> Frontend: 3. 인가 코드(code) 포함하여 리다이렉트
+    User ->> Frontend: 로그인 버튼 클릭
+    Frontend ->> AuthServer: OAuth 인증 요청 (client_id, redirect_uri 포함)
+    AuthServer ->> Frontend: 인가 코드(code) 포함하여 리다이렉트
 
-    Frontend ->> Backend: 4. POST로 인가 코드를 body에 담아 전달
-    Backend ->> AuthServer: 5. 인가 코드로 Access Token 요청
-    AuthServer ->> Backend: 6. Access Token, Refresh Token 반환
-    Backend ->> Frontend: 7. Access Token, Refresh Token 응답 (JSON)
+    Frontend ->> Backend: POST로 인가 코드를 body에 담아 전달
+    Backend ->> AuthServer: 인가 코드로 Access Token 요청
+    AuthServer ->> Backend: Access Token, Refresh Token 반환
+    Backend ->> Frontend: Access Token, Refresh Token 응답 (JSON)
 
-    Frontend ->> Frontend: 8. setTokens(Access Token, Refresh Token, userId) 저장
-    Frontend ->> User: 9. 로그인 완료 (저장된 토큰 사용)
+    Frontend ->> Frontend: setTokens(Access Token, Refresh Token, userId) 저장
+    Frontend ->> User: 로그인 완료 (저장된 토큰 사용)
 
 ``` -->
 
@@ -579,33 +590,35 @@ OIDC의 개념을 발견하고, 백엔드에서 `id_token`의 서명을 검증�
 
 <br/>
 
-![pkce result architecture](./pkce_result_architecture.png)
+![pkce result architecture](./diagram_pkce_result_architecture.png)
 
 <!-- ```mermaid
+
 sequenceDiagram
+    autoNumber
     participant User as 사용자
     participant Frontend as 프론트엔드
     participant OAuthServer as OAuth 서버 (카카오)
     participant Backend as 백엔드
 
-    User->>Frontend: 1. 로그인 버튼 클릭
-    Frontend->>Frontend: 2. code_verifier 생성 및 저장
-    Frontend->>Frontend: 3. code_challenge 생성
-    Frontend->>OAuthServer: 4. 인증 요청 (code_challenge, code_challenge_method, state 포함)
-    OAuthServer->>Frontend: 5. 인가 코드 (authorization_code, state 포함) 반환
+    User->>Frontend: 로그인 버튼 클릭
+    Frontend->>Frontend: code_verifier 생성 및 저장
+    Frontend->>Frontend: code_challenge 생성
+    Frontend->>OAuthServer: 인증 요청 (code_challenge, code_challenge_method, state 포함)
+    OAuthServer->>Frontend: 인가 코드 (authorization_code, state 포함) 반환-
 
-    Frontend->>Frontend: 6. 응답받은 state와 저장된 state 비교 (CSRF 검증)
-    Frontend->>OAuthServer: 7. 토큰 요청 (authorization_code, code_verifier 포함)
-    OAuthServer->>Frontend: 8. access_token, id_token 반환-
+    Frontend->>Frontend: 응답받은 state와 저장된 state 비교 (CSRF 검증)
+    Frontend->>OAuthServer: 토큰 요청 (authorization_code, code_verifier 포함)
+    OAuthServer->>Frontend: access_token, id_token 반환-
 
-    Frontend->>Frontend: 9. access_token 저장
-    Frontend->>Backend: 10. access_token 전송, id_token 검증 요청
-    Backend->>OAuthServer: 11. id_token 서명 검증
-    OAuthServer->>Backend: 12. 검증 성공-
-    Backend->>Frontend: 13. user 데이터 추출 후 반환-
+    Frontend->>Frontend: access_token 저장
+    Frontend->>Backend: access_token 전송, id_token 검증 요청
+    Backend->>OAuthServer: id_token 서명 검증
+    OAuthServer->>Backend: 검증 성공-
+    Backend->>Frontend: user 데이터 추출 후 반환-
 
-    Frontend->>Frontend: 14. user_id 저장
-    Frontend->>User: 15. 로그인 완료 후 메인 페이지로 이동
+    Frontend->>Frontend: user_id 저장
+    Frontend->>User: 로그인 완료 후 메인 페이지로 이동
 
 ``` -->
 
